@@ -70,7 +70,6 @@ export function AnalysisFlow() {
     <>
       <Dialog open={open} onOpenChange={(v) => !v && close()}>
         <DialogContent
-          showCloseButton={false}
           className="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-4xl"
         >
           <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-5 py-3">
