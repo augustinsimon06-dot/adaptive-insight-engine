@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Clock, Eye, Mail, Linkedin, PanelRightOpen, Plus, Sparkles } from "lucide-react";
+import { ChevronDown, PanelRightOpen, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,18 +7,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { channelLabel } from "@/lib/lemscore/benchmarks";
-import { baseCampaign } from "@/lib/lemscore/data";
 import { useLemScore } from "@/lib/lemscore/store";
-import type { OutreachChannel, SequenceStep, VariantId } from "@/lib/lemscore/types";
+import type { SequenceStep, VariantId } from "@/lib/lemscore/types";
+import { MessagePreviewDialog } from "./message-preview-dialog";
 import { ScorePanel } from "./score-panel";
 import { DemoBadge, InfoPopover, ScorePill } from "./shared";
-
-function ChannelIcon({ channel }: { channel: OutreachChannel }) {
-  if (channel === "email") return <Mail className="h-4 w-4" aria-hidden="true" />;
-  if (channel === "wait") return <Clock className="h-4 w-4" aria-hidden="true" />;
-  if (channel === "profile_visit") return <Eye className="h-4 w-4" aria-hidden="true" />;
-  return <Linkedin className="h-4 w-4" aria-hidden="true" />;
-}
+import { WorkflowCanvas } from "./workflow-canvas";
 
 export function SequenceScreen() {
   const store = useLemScore();
@@ -30,7 +24,6 @@ export function SequenceScreen() {
     steps,
     setStepContent,
     prospectsFor,
-    messageScore,
   } = store;
   const variantSteps = steps(selectedVariant);
   const selected = variantSteps.find((s) => s.id === selectedStepId) ?? variantSteps[0]!;
@@ -109,76 +102,25 @@ export function SequenceScreen() {
 
       <div
         className={cn(
-          "grid min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[280px_360px_minmax(0,1fr)]",
-          !panelOpen && "xl:grid-cols-[280px_minmax(0,1fr)]",
+          "grid min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[390px_360px_minmax(0,1fr)]",
+          !panelOpen && "xl:grid-cols-[390px_minmax(0,1fr)]",
         )}
       >
         {/* Canvas */}
-        <div className="min-h-0 space-y-3 overflow-y-auto border-r border-border bg-background p-4">
-          <div className="rounded-xl border border-border bg-card p-3">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Sender &amp; schedule
-            </h2>
-            <p className="mt-1.5 text-sm font-medium">{baseCampaign.sender.name}</p>
-            <p className="text-xs text-muted-foreground">{baseCampaign.sender.email}</p>
-            <p className="mt-2 text-xs text-muted-foreground">{baseCampaign.schedule}</p>
-          </div>
-
-          <h2 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Campaign canvas
-          </h2>
-          <ol className="space-y-2">
-            {variantSteps.map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => selectStep(s.id)}
-                  aria-current={s.id === selected.id ? "step" : undefined}
-                  className={cn(
-                    "w-full rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                    s.id === selected.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-card hover:border-primary/40",
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <ChannelIcon channel={s.channel} />
-                    <span className="text-sm font-medium">
-                      {s.label.split("·")[1]?.trim() ?? s.label}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">{s.timing}</span>
-                    {s.hasContent ? (
-                      <ScorePill score={messageScore(s.id).score} className="ml-auto" />
-                    ) : (
-                      <span className="ml-auto text-[11px] text-muted-foreground">
-                        No content · no score
-                      </span>
-                    )}
-                  </div>
-                </button>
-                <div className="mx-auto h-3 w-px bg-border" aria-hidden="true" />
-              </li>
-            ))}
-          </ol>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full border-dashed"
-            onClick={() =>
-              toast("Add a step", {
-                description:
-                  "The beta keeps the current multichannel workflow fixed for a reliable demo.",
-              })
-            }
-          >
-            <Plus className="h-4 w-4" /> Add a step
-          </Button>
-          <p className="text-[11px] text-muted-foreground">
-            {prospectsFor(selectedVariant).length} prospects assigned to Sequence {selectedVariant}.
-          </p>
-        </div>
+        <WorkflowCanvas
+          variant={selectedVariant}
+          steps={variantSteps}
+          selectedId={selected.id}
+          onSelect={selectStep}
+          prospectCount={prospectsFor(selectedVariant).length}
+          className="min-h-0 border-r border-border"
+          onAddStep={() =>
+            toast("Add a step", {
+              description:
+                "The beta keeps the current multichannel workflow fixed for a reliable demo.",
+            })
+          }
+        />
 
         {/* lemScore panel (desktop) */}
         {panelOpen && selected.hasContent && (
@@ -206,19 +148,35 @@ export function SequenceScreen() {
                 {channelLabel(selected.channel)}
               </span>
               {selected.hasContent && <MobilePanelTrigger step={selected} analyzing={analyzing} />}
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-auto border-lem/40 text-lem hover:bg-lem-soft"
-                onClick={() =>
-                  toast("lemlist AI", {
-                    description:
-                      "The existing lemlist AI writing assistant opens here. lemScore stays diagnostic-only.",
-                  })
-                }
-              >
-                <Sparkles className="h-4 w-4" /> lemlist AI
-              </Button>
+              {selected.hasContent && (
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      toast("Delivery mode", {
+                        description: "This campaign step is automated for every assigned prospect.",
+                      })
+                    }
+                  >
+                    Automated <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                  <MessagePreviewDialog step={selected} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-lem/40 text-lem hover:bg-lem-soft"
+                    onClick={() =>
+                      toast("lemlist AI", {
+                        description:
+                          "The existing lemlist AI writing assistant opens here. lemScore stays diagnostic-only.",
+                      })
+                    }
+                  >
+                    <Sparkles className="h-4 w-4" /> lemlist AI
+                  </Button>
+                </div>
+              )}
             </div>
 
             {selected.hasContent ? (

@@ -1,135 +1,153 @@
-import { AlertTriangle, Rocket } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Mail, Rocket, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { baseCampaign } from "@/lib/lemscore/data";
-import { channelLabel } from "@/lib/lemscore/benchmarks";
+import { cn } from "@/lib/utils";
 import { useLemScore } from "@/lib/lemscore/store";
 import type { VariantId } from "@/lib/lemscore/types";
-import { DemoBadge, InfoPopover, ScorePill } from "./shared";
+import { DemoBadge, InfoPopover } from "./shared";
+import { WorkflowCanvas } from "./workflow-canvas";
 
 export function LaunchScreen() {
-  const { steps, prospectsFor, messageScore, launched, launch, activeProspects } = useLemScore();
+  const { steps, prospectsFor, launched, launch, activeProspects } = useLemScore();
+  const [variant, setVariant] = useState<VariantId>("A");
+  const [search, setSearch] = useState("");
+
+  const visibleProspects = activeProspects.filter((prospect) =>
+    `${prospect.name} ${prospect.company}`.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
-    <div className="min-h-[calc(100vh-6.5rem)] space-y-5 bg-surface px-6 py-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-base font-semibold">Review &amp; launch</h2>
+    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden bg-surface">
+      <div className="flex items-center gap-2 border-b border-border bg-background px-6 py-3">
+        <h2 className="text-sm font-semibold">Review &amp; launch</h2>
         <DemoBadge />
+        <span className="ml-auto inline-flex items-center gap-2 rounded-lg bg-success-soft px-3 py-1.5 text-xs font-semibold text-success">
+          All checks complete
+        </span>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="space-y-3">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Prospects
-            </h3>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">{activeProspects.length}</p>
-            <p className="text-xs text-muted-foreground">
-              {prospectsFor("A").length} on Sequence A · {prospectsFor("B").length} on Sequence B
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[330px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col border-r border-border bg-background">
+          <div className="flex border-b border-border px-4 pt-3">
+            <button className="border-b-2 border-primary px-3 py-2 text-sm font-semibold text-primary">
+              To send <span className="ml-1 text-xs">{activeProspects.length}</span>
+            </button>
+            <button className="px-3 py-2 text-sm font-medium text-muted-foreground">
+              Sent <span className="ml-1 text-xs">0</span>
+            </button>
+          </div>
+          <div className="border-b border-border p-4">
+            <div className="relative">
+              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search prospects"
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <p className="px-2 pb-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              {visibleProspects.length} prospects ready
             </p>
-            <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-              {activeProspects.slice(0, 5).map((p) => (
-                <li key={p.id}>
-                  {p.name} — {p.company} · {p.variant}
-                </li>
+            <div className="space-y-2">
+              {visibleProspects.map((prospect, index) => (
+                <button
+                  key={prospect.id}
+                  type="button"
+                  onClick={() => setVariant(prospect.variant)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors",
+                    index === 0
+                      ? "border-primary bg-primary/5"
+                      : "border-transparent hover:border-border hover:bg-muted/30",
+                  )}
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    {prospect.firstName[0]}
+                    {prospect.lastName[0]}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{prospect.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {prospect.email}
+                    </span>
+                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Mail className="h-3 w-3" /> Sequence {prospect.variant}
+                    </span>
+                  </span>
+                </button>
               ))}
-            </ul>
+            </div>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4 text-xs">
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Sender &amp; schedule
-            </h3>
-            <p className="mt-1.5 font-medium text-foreground">{baseCampaign.sender.name}</p>
-            <p className="text-muted-foreground">{baseCampaign.sender.email}</p>
-            <p className="mt-2 text-muted-foreground">{baseCampaign.schedule}</p>
-          </div>
-          <div className="flex gap-2 rounded-xl border border-warning/40 bg-warning-soft p-3 text-xs text-foreground">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-            Beta simulation: launching never sends a real message. lemScore never blocks a launch.
-          </div>
-        </div>
+        </aside>
 
-        <div className="space-y-4">
-          {(["A", "B"] as VariantId[]).map((variant) => (
-            <section key={variant} className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-semibold">Sequence {variant}</h3>
-              <p className="text-xs text-muted-foreground">
-                {prospectsFor(variant).length} prospects assigned · random 50/50 split preserved
-              </p>
-              <div className="mt-3 space-y-2">
-                {steps(variant).map((s) => {
-                  if (!s.hasContent) {
-                    return (
-                      <div
-                        key={s.id}
-                        className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground"
-                      >
-                        {s.label} · {s.timing} — no message content, no lemScore
-                      </div>
-                    );
-                  }
-                  const r = messageScore(s.id);
-                  return (
-                    <div key={s.id} className="rounded-lg border border-border p-3">
-                      <div className="flex flex-wrap items-center gap-2 text-xs">
-                        <span className="font-medium">{s.timing}</span>
-                        <span className="text-muted-foreground">· {channelLabel(s.channel)}</span>
-                        <span className="ml-1 inline-flex items-center gap-1.5">
-                          <span className="font-semibold">lemScore {r.score}/100</span>
-                          <InfoPopover>
-                            <div className="space-y-1">
-                              <p className="font-medium">
-                                Fit of this fixed message with its assigned prospects
-                              </p>
-                              <p>Strong fit: {r.distribution.strong}%</p>
-                              <p>Medium fit: {r.distribution.medium}%</p>
-                              <p>Weak fit: {r.distribution.weak}%</p>
-                              <p>Confidence: {r.confidence}</p>
-                              <p>
-                                Predicted positive reply rate: {r.prediction.positiveReplyRate}%
-                              </p>
-                              <p>
-                                Predicted qualified opportunity rate: {r.prediction.opportunityRate}
-                                %
-                              </p>
-                              <DemoBadge className="mt-1" />
-                            </div>
-                          </InfoPopover>
-                        </span>
-                        <ScorePill score={r.score} suffix={false} className="ml-auto" />
-                      </div>
-                      {s.subject && <p className="mt-2 text-xs font-medium">{s.subject}</p>}
-                      <p className="mt-1 line-clamp-3 text-xs whitespace-pre-line text-muted-foreground">
-                        {s.body}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+        <main className="flex min-h-0 min-w-0 flex-col">
+          <div className="flex flex-wrap items-center gap-3 border-b border-border bg-background px-5 py-3">
+            <div className="inline-flex rounded-lg border border-border p-0.5" role="tablist">
+              {(["A", "B"] as VariantId[]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  role="tab"
+                  aria-selected={variant === item}
+                  onClick={() => setVariant(item)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-semibold",
+                    variant === item
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  Sequence {item}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {prospectsFor(variant).length} prospects · random 50/50 split preserved
+            </span>
+            <InfoPopover label="Each prospect receives exactly one A/B variant. lemScore evaluates the fixed messages but never changes the split or sends anything automatically in this beta." />
+          </div>
 
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
+          <WorkflowCanvas
+            variant={variant}
+            steps={steps(variant)}
+            prospectCount={prospectsFor(variant).length}
+            showContent
+            className="min-h-0 flex-1"
+            onAddStep={() =>
+              toast("Add a step", {
+                description: "The launch review preserves the fixed A/B workflow.",
+              })
+            }
+          />
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-border bg-background px-5 py-3 shadow-[0_-6px_20px_rgba(15,23,42,0.05)]">
+            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <span>
+                Beta simulation: no real message will be sent. Scores never block the launch.
+              </span>
+            </div>
             <Button
+              className="ml-auto"
               disabled={launched}
               onClick={() => {
                 launch();
-                toast.success("Demo campaign launched", {
+                toast.success("Demo A/B campaign launched", {
                   description:
-                    "No real message was sent. lemScore snapshots were frozen and simulated outcomes unlocked.",
+                    "No real message was sent. lemScore snapshots were frozen for Performance.",
                 });
               }}
             >
-              <Rocket className="h-4 w-4" />{" "}
-              {launched ? "A/B campaign active (demo)" : "Launch A/B campaign (demo)"}
+              <Rocket className="h-4 w-4" />
+              {launched ? "Campaign active (demo)" : "Launch A/B campaign (demo)"}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              {launched
-                ? "Launch snapshots are stored and preserved. Open Performance to compare predictions with simulated outcomes."
-                : "Launching saves an immutable lemScore snapshot for every message and unlocks simulated Performance data."}
-            </p>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
