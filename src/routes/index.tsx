@@ -1,31 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { AppProvider, useApp } from "@/lib/app-state";
-import { CampaignHeader } from "@/components/lem/campaign-header";
-import { SequenceBuilder } from "@/components/lem/sequence-builder";
-import { ProspectListTab } from "@/components/lem/prospect-list";
-import { PerformanceTab } from "@/components/lem/performance-tab";
-import { LaunchTab } from "@/components/lem/launch-tab";
-import { EvidenceDrawer } from "@/components/lem/evidence-drawer";
-import { CompareAudiencesModal } from "@/components/lem/compare-audiences";
-import { SettingsModal } from "@/components/lem/settings-modal";
-import { AnalysisFlow } from "@/components/lem/analysis-flow";
+import { LemScoreProvider, useLemScore } from "@/lib/lemscore/store";
+import { CampaignShell } from "@/components/lemscore/campaign-shell";
+import { SequenceScreen } from "@/components/lemscore/sequence-screen";
+import { ProspectListScreen } from "@/components/lemscore/prospect-list-screen";
+import { LaunchScreen } from "@/components/lemscore/launch-screen";
+import { PerformanceScreen } from "@/components/lemscore/performance-screen";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Adaptive Challenger — lemlist campaign prototype" },
+      { title: "lemScore beta — predictive outreach scoring in lemlist" },
       {
         name: "description",
         content:
-          "Interactive prototype of Adaptive Challenger: turn Closed Won and Closed Lost outcomes into a new targeting and messaging hypothesis inside the campaign builder.",
+          "lemScore predicts and explains how well every fixed outreach message fits its assigned audience, using workspace outcomes, CRM won/lost data and prospect signals.",
       },
-      { property: "og:title", content: "Adaptive Challenger — lemlist campaign prototype" },
+      { property: "og:title", content: "lemScore beta — predictive outreach scoring" },
       {
         property: "og:description",
         content:
-          "Every closed-won deal teaches lemlist who to target and what to say next. Clickable demo-data prototype.",
+          "Score, predict and diagnose the commercial fit of fixed outreach messages across email, LinkedIn and scripts.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -36,28 +32,24 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <AppProvider>
+    <LemScoreProvider>
       <TooltipProvider delayDuration={200}>
         <div className="min-h-screen bg-surface font-sans text-foreground">
-          <CampaignHeader />
+          <CampaignShell />
           <main>
             <Screens />
           </main>
-          <EvidenceDrawer />
-          <CompareAudiencesModal />
-          <SettingsModal />
-          <AnalysisFlow />
           <Toaster />
         </div>
       </TooltipProvider>
-    </AppProvider>
+    </LemScoreProvider>
   );
 }
 
 function Screens() {
-  const { mainTab } = useApp();
-  if (mainTab === "sequence") return <SequenceBuilder />;
-  if (mainTab === "prospects") return <ProspectListTab />;
-  if (mainTab === "launch") return <LaunchTab />;
-  return <PerformanceTab />;
+  const { mainTab } = useLemScore();
+  if (mainTab === "sequence") return <SequenceScreen />;
+  if (mainTab === "prospects") return <ProspectListScreen />;
+  if (mainTab === "launch") return <LaunchScreen />;
+  return <PerformanceScreen />;
 }
