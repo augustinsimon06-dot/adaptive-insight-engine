@@ -26,8 +26,8 @@ export type SequenceStep = {
   label: string;
   timing: string;
   hasContent: boolean;
-  subject?: string;
-  body?: string;
+  subject?: string | undefined;
+  body?: string | undefined;
 };
 
 export type SequenceVariant = {
@@ -89,7 +89,7 @@ export type BenchmarkProfile = {
   personaGroup: PersonaGroup;
   positionBand: "first_touch" | "follow_up";
   preferredLength: [number, number];
-  preferredSubjectLength?: [number, number];
+  preferredSubjectLength?: [number, number] | undefined;
   toneTraits: string[];
   effectivePains: string[];
   preferredProof: string;
