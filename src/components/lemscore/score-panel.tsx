@@ -5,7 +5,7 @@ import { bandLabel } from "@/lib/lemscore/scoring";
 import { useLemScore } from "@/lib/lemscore/store";
 import type { Prospect, ScoreFactor, SequenceStep } from "@/lib/lemscore/types";
 import { cn } from "@/lib/utils";
-import { DemoBadge, InfoPopover, ScorePill, TrendIndicator, bandClasses } from "./shared";
+import { DemoBadge, InfoPopover, ScorePill, bandClasses } from "./shared";
 
 export function ScorePanel({
   step,
@@ -16,12 +16,9 @@ export function ScorePanel({
   analyzing: boolean;
   onCollapse?: () => void;
 }) {
-  const { messageScore, prospectsFor, trendFor, launched, outcome } = useLemScore();
+  const { messageScore, prospectsFor } = useLemScore();
   const result = messageScore(step.id);
   const audience = prospectsFor(step.variant);
-  const trend = trendFor(step.id, result.score, step.variant);
-  const out = outcome(step.variant);
-  const displayedScore = launched && trend.recalibrated ? trend.score : result.score;
   const positive = [...result.factors]
     .filter((factor) => factor.contribution > 0)
     .sort((a, b) => b.contribution - a.contribution)
@@ -61,28 +58,11 @@ export function ScorePanel({
       </div>
 
       <section className="rounded-xl border-2 border-primary/50 bg-primary/[0.025] p-4">
+        <p className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+          Live message score
+        </p>
         <div className="flex items-baseline gap-2">
-          {launched && trend.recalibrated ? (
-            <TrendIndicator
-              className="text-3xl"
-              detail={{
-                trend: trend.trend,
-                launchScore: trend.snapshot?.score ?? null,
-                currentScore: trend.score,
-                predictedPositive:
-                  trend.snapshot?.predictedPositiveRate ?? result.prediction.positiveReplyRate,
-                actualPositive: out?.actualPositiveRate ?? null,
-                predictedOpportunity:
-                  trend.snapshot?.predictedOpportunityRate ?? result.prediction.opportunityRate,
-                actualOpportunity: out?.actualOpportunityRate ?? null,
-                sends: out?.sends ?? 0,
-                confidence: result.confidence,
-                explanation: trend.explanation,
-              }}
-            />
-          ) : (
-            <span className="text-3xl font-semibold tabular-nums">{displayedScore}</span>
-          )}
+          <span className="text-3xl font-semibold tabular-nums">{result.score}</span>
           <span className="text-sm text-muted-foreground">/100</span>
           <InfoPopover label="This is a prediction, not a guaranteed outcome. It combines message characteristics, assigned audience context, channel-specific patterns and demo workspace history." />
           {analyzing && (
@@ -94,10 +74,10 @@ export function ScorePanel({
         <p
           className={cn(
             "mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
-            bandClasses(displayedScore),
+            bandClasses(result.score),
           )}
         >
-          {bandLabel(displayedScore)}
+          {bandLabel(result.score)}
         </p>
 
         <dl className="mt-3 space-y-1.5 text-xs">
