@@ -11,7 +11,7 @@ import {
   MIN_OUTCOMES_FOR_RECALIBRATION,
   baseCampaign,
   prospects as allProspects,
-  simulatedOutcomes,
+  simulateProspectOutcome,
 } from "./data";
 import {
   aggregateMessageScore,
@@ -21,7 +21,7 @@ import {
 } from "./scoring";
 import type { CampaignOutcome, ScoreSnapshot, SequenceStep, VariantId } from "./types";
 
-const STORAGE_KEY = "lemscore.beta.v3";
+const STORAGE_KEY = "lemscore.beta.v4";
 
 type Filters = {
   search: string;
@@ -104,6 +104,7 @@ type Store = Persisted & {
   launchedProspectsFor: (variant: VariantId) => typeof allProspects;
   messageScore: (stepId: string) => ReturnType<typeof aggregateMessageScore>;
   prospectScore: (prospectId: string) => ReturnType<typeof aggregateProspectSequenceScore>;
+  prospectLaunchSnapshot: (prospectId: string) => ScoreSnapshot | null;
   variantResult: (variant: VariantId) => ReturnType<typeof aggregateVariantSequenceScore>;
   variantScore: (variant: VariantId) => number;
   outcome: (variant: VariantId) => CampaignOutcome | null;
@@ -209,6 +210,11 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
     [steps],
   );
 
+  const prospectLaunchSnapshot = useCallback(
+    (prospectId: string) => state.snapshots[`prospect:${prospectId}`] ?? null,
+    [state.snapshots],
+  );
+
   const variantResult = useCallback(
     (variant: VariantId) => {
       const list = state.launched ? launchedProspectsFor(variant) : prospectsFor(variant);
@@ -223,8 +229,38 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
   );
 
   const outcome = useCallback(
-    (variant: VariantId) => (state.launched ? simulatedOutcomes[variant] : null),
-    [state.launched],
+    (variant: VariantId): CampaignOutcome | null => {
+      if (!state.launched) return null;
+      const variantProspects = launchedProspectsFor(variant);
+      const observed = variantProspects.map((prospect) => {
+        const frozen = state.snapshots[`prospect:${prospect.id}`];
+        const score =
+          frozen?.score ?? aggregateProspectSequenceScore(steps(variant), prospect).score;
+        return simulateProspectOutcome(prospect, score);
+      });
+      const count = (key: keyof (typeof observed)[number]) =>
+        observed.filter((result) => result[key]).length;
+      const denominator = variantProspects.length;
+      const positiveReplies = count("positiveReply");
+      const opportunities = count("opportunity");
+      const contentSteps = steps(variant).filter((item) => item.hasContent).length;
+      return {
+        variant,
+        sends: denominator * contentSteps,
+        positiveReplies,
+        actualPositiveRate: denominator
+          ? Math.round((positiveReplies / denominator) * 1000) / 10
+          : 0,
+        actualOpportunityRate: denominator
+          ? Math.round((opportunities / denominator) * 1000) / 10
+          : 0,
+        meetings: count("meeting"),
+        opportunities,
+        closedWon: count("closedWon"),
+        closedLost: count("closedLost"),
+      };
+    },
+    [state.launched, state.snapshots, launchedProspectsFor, steps],
   );
 
   const trendFor = useCallback(
@@ -283,6 +319,16 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
           capturedAt,
         };
       });
+      launchList.forEach((prospect) => {
+        const result = aggregateProspectSequenceScore(steps(prospect.variant), prospect);
+        snapshots[`prospect:${prospect.id}`] = {
+          score: result.score,
+          predictedPositiveRate: result.prediction.positiveReplyRate,
+          predictedOpportunityRate: result.prediction.opportunityRate,
+          confidence: result.confidence,
+          capturedAt,
+        };
+      });
       setState((prev) => ({
         ...prev,
         launched: true,
@@ -319,6 +365,7 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       launchedProspectsFor,
       messageScore,
       prospectScore,
+      prospectLaunchSnapshot,
       variantResult,
       variantScore,
       outcome,
@@ -338,6 +385,7 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       launchedProspectsFor,
       messageScore,
       prospectScore,
+      prospectLaunchSnapshot,
       variantResult,
       variantScore,
       outcome,

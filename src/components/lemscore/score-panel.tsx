@@ -4,7 +4,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { channelLabel } from "@/lib/lemscore/benchmarks";
 import { bandLabel } from "@/lib/lemscore/scoring";
 import { useLemScore } from "@/lib/lemscore/store";
-import type { Prospect, ScoreFactor, SequenceStep } from "@/lib/lemscore/types";
+import type { ScoreFactor, SequenceStep } from "@/lib/lemscore/types";
 import { cn } from "@/lib/utils";
 import { DemoBadge, InfoPopover, ScorePill, bandClasses } from "./shared";
 
@@ -17,9 +17,8 @@ export function ScorePanel({
   analyzing: boolean;
   onCollapse?: () => void;
 }) {
-  const { messageScore, prospectsFor } = useLemScore();
+  const { messageScore } = useLemScore();
   const result = messageScore(step.id);
-  const audience = prospectsFor(step.variant);
   const negative = [...result.factors]
     .filter((factor) => factor.contribution < 0)
     .sort((a, b) => a.contribution - b.contribution)
@@ -35,7 +34,7 @@ export function ScorePanel({
       <div className="flex items-start gap-2">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-primary uppercase">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Audience prediction
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Message optimization
           </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Sequence {step.variant} · {channelLabel(step.channel)}
@@ -43,7 +42,7 @@ export function ScorePanel({
         </div>
         <InfoPopover
           className="w-96"
-          label="This is a commercial outcome prediction, not a generic copywriting grade. It crosses the exact fixed message with each assigned prospect, comparable lemlist patterns, workspace history and CRM won/lost outcomes. It never rewrites the message or changes the A/B split."
+          label="This is not lemlist's generic writing or deliverability score. It compares the exact message, channel, position and timing with commercially similar historical messages and their positive replies, opportunities and won/lost outcomes. Individual prospect fit is calculated separately in Prospect list."
         />
         {onCollapse && (
           <Button
@@ -60,12 +59,12 @@ export function ScorePanel({
 
       <section className="rounded-xl border-2 border-primary/50 bg-primary/[0.025] p-4">
         <p className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-          Live outcome prediction
+          Live message score
         </p>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-semibold tabular-nums">{result.score}</span>
           <span className="text-sm text-muted-foreground">/100</span>
-          <InfoPopover label="This is a prediction, not a guaranteed result. The number is the mean of the personalized predictions for every prospect currently assigned to this variant." />
+          <InfoPopover label="This 0–100 number is an optimization index, not a reply probability. It measures how closely this exact message matches outcome-winning patterns for the same channel and sequence context. Changing the selected prospects does not change it." />
           {analyzing && (
             <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Updating…
@@ -88,8 +87,7 @@ export function ScorePanel({
               {bandLabel(result.score)}
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              Mean of {result.audienceSize} personalized message × prospect prediction
-              {result.audienceSize === 1 ? "" : "s"}.
+              Exact copy × channel × position × timing × comparable commercial outcomes.
             </p>
           </>
         )}
@@ -103,16 +101,6 @@ export function ScorePanel({
           <Row label="Workspace baseline" value={`${result.prediction.workspaceBaselineRate}%`} />
           <Row label="Confidence" value={result.confidence} />
         </dl>
-        <div
-          className={cn(
-            "mt-3 grid grid-cols-3 gap-1 text-center text-[10px]",
-            unavailable && "opacity-55",
-          )}
-        >
-          <FitCell label="Strong" value={result.distribution.strong} className="text-success" />
-          <FitCell label="Medium" value={result.distribution.medium} className="text-warning" />
-          <FitCell label="Weak" value={result.distribution.weak} className="text-destructive" />
-        </div>
       </section>
 
       {priority && !unavailable && (
@@ -135,8 +123,9 @@ export function ScorePanel({
           <HoverCardContent align="start" side="right" className="w-96 text-xs leading-relaxed">
             <p className="font-semibold text-foreground">One evidence-backed improvement</p>
             <p className="mt-1 text-muted-foreground">
-              Your message is usable, but comparable message × prospect pairs produced better
-              commercial outcomes when this element was closer to the winning pattern:
+              Your message is usable, but comparable messages sent in the same sequence context
+              produced better commercial outcomes when this element was closer to the winning
+              pattern:
             </p>
             <p className="mt-2 font-medium text-foreground">
               {priority.label}: {priority.benchmark}
@@ -150,13 +139,13 @@ export function ScorePanel({
 
       <section className="rounded-xl border border-border bg-card p-4">
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Audience evaluated
+          Sequence context
         </h3>
         <dl className="mt-2 space-y-1.5 text-xs">
-          <Row label="Assigned prospects" value={audience.length} />
-          <Row label="Main persona" value={mode(audience, (p) => p.context.persona)} />
-          <Row label="Main industry" value={mode(audience, (p) => p.context.industry)} />
-          <Row label="Most common signal" value={mode(audience, (p) => p.context.signal.label)} />
+          <Row label="Channel" value={channelLabel(step.channel)} />
+          <Row label="Message position" value={`Content step ${step.position}`} />
+          <Row label="Timing" value={step.timing} />
+          <Row label="Target segment" value="VP Sales · B2B SaaS · 201–500" />
         </dl>
       </section>
 
@@ -167,8 +156,9 @@ export function ScorePanel({
             <ChevronDown className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
           </summary>
           <div className="mt-3 rounded-lg bg-surface p-3 text-[11px] text-muted-foreground">
-            Compared with {result.comparableMessages.toLocaleString()} channel- and persona-matched
-            demo messages. {result.calibrationSource}. Confidence: {result.confidence}.
+            Compared with {result.comparableMessages.toLocaleString()} context-, channel- and
+            target-segment-matched demo messages. {result.calibrationSource}. Confidence:{" "}
+            {result.confidence}.
           </div>
           <ul className="mt-3 space-y-2.5">
             {result.factors.map((factor) => (
@@ -180,8 +170,9 @@ export function ScorePanel({
 
       <p className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-[11px] leading-relaxed text-muted-foreground">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-        One fixed message is crossed with every assigned prospect. Launch freezes this prediction;
-        actual positive replies, opportunities and won/lost outcomes remain the final validation.
+        This message score stays independent from selected prospects. Prospect list adds individual
+        fit after evaluating the full assigned sequence. Launch freezes both predictions so actual
+        outcomes can validate them later.
       </p>
       <DemoBadge className="w-fit" />
     </aside>
@@ -208,22 +199,6 @@ export function FactorRow({ factor }: { factor: ScoreFactor }) {
       <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{factor.benchmark}</p>
     </li>
   );
-}
-
-function FitCell({ label, value, className }: { label: string; value: number; className: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background px-1 py-2">
-      <div className={cn("font-semibold tabular-nums", className)}>{value}%</div>
-      <div className="mt-0.5 text-muted-foreground">{label}</div>
-    </div>
-  );
-}
-
-function mode(list: Prospect[], select: (prospect: Prospect) => string) {
-  if (!list.length) return "—";
-  const counts = new Map<string, number>();
-  list.forEach((item) => counts.set(select(item), (counts.get(select(item)) ?? 0) + 1));
-  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {

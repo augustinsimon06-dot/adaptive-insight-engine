@@ -161,12 +161,25 @@ export type ScoreResult = {
 export type CampaignOutcome = {
   variant: VariantId;
   sends: number;
+  positiveReplies: number;
   actualPositiveRate: number;
   actualOpportunityRate: number;
   meetings: number;
   opportunities: number;
   closedWon: number;
   closedLost: number;
+};
+
+export type ProspectOutcome = {
+  delivered: boolean;
+  opened: boolean;
+  clicked: boolean;
+  linkedinEngaged: boolean;
+  positiveReply: boolean;
+  meeting: boolean;
+  opportunity: boolean;
+  closedWon: boolean;
+  closedLost: boolean;
 };
 
 export type ScoreSnapshot = {

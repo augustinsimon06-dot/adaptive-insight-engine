@@ -1,5 +1,5 @@
 import { hasContent, round1, round2, selectComparableBenchmark } from "./benchmarks";
-import { workspaceHistory } from "./data";
+import { campaignModelProspect, workspaceHistory } from "./data";
 import type {
   BenchmarkProfile,
   CampaignOutcome,
@@ -397,96 +397,29 @@ function channelWord(channel: SequenceStep["channel"]) {
       : "messages";
 }
 
-/** aggregateMessageScore — one fixed message across all prospects of its variant */
+/**
+ * Message Optimization Score. It evaluates the exact copy in its exact
+ * channel/position/timing context. The selected prospects do not affect this
+ * score; their individual fit is calculated separately in Prospect list.
+ */
 export function aggregateMessageScore(
   step: SequenceStep,
-  variantProspects: Prospect[],
+  _variantProspects: Prospect[] = [],
 ): ScoreResult & {
   distribution: { strong: number; medium: number; weak: number };
 } {
-  const results = variantProspects.map((p) => scoreMessageForProspect(step, p));
-  if (results.length === 0) {
-    return {
-      score: 0,
-      band: "weak",
-      validity: "audience_unavailable",
-      validityReason: "Add prospects to this campaign to calculate an audience prediction.",
-      audienceSize: 0,
-      prediction: {
-        positiveReplyRate: 0,
-        opportunityRate: 0,
-        workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
-      },
-      confidence: "Low",
-      comparableMessages: 0,
-      factors: [],
-      calibrationSource: "Audience prediction unavailable",
-      distribution: { strong: 0, medium: 0, weak: 0 },
-    };
-  }
-  const invalid = results.find((result) => result.validity !== "valid");
-  if (invalid) {
-    return {
-      ...invalid,
-      audienceSize: results.length,
-      distribution: { strong: 0, medium: 0, weak: 0 },
-    };
-  }
-  const avg = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
-  const reference = results.reduce(
-    (best, r) => (Math.abs(r.score - avg) < Math.abs(best.score - avg) ? r : best),
-    results[0]!,
-  );
-  const groupedFactors = new Map<string, ScoreFactor[]>();
-  results.forEach((result) => {
-    result.factors.forEach((factor) => {
-      const group = groupedFactors.get(factor.label) ?? [];
-      group.push(factor);
-      groupedFactors.set(factor.label, group);
-    });
+  const result = scoreMessageForProspect(step, {
+    ...campaignModelProspect,
+    variant: step.variant,
   });
-  const factors = Array.from(groupedFactors.entries())
-    .map(([label, group]) => {
-      const representative = group.reduce((best, factor) =>
-        Math.abs(factor.contribution) > Math.abs(best.contribution) ? factor : best,
-      );
-      return {
-        ...representative,
-        label,
-        contribution: Math.round(
-          group.reduce((sum, factor) => sum + factor.contribution, 0) / group.length,
-        ),
-        sampleSize: Math.round(
-          group.reduce((sum, factor) => sum + factor.sampleSize, 0) / group.length,
-        ),
-      };
-    })
-    .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
-  const counts = { strong: 0, medium: 0, weak: 0 };
-  results.forEach((r) => {
-    counts[r.band] += 1;
-  });
-  const total = results.length;
   return {
-    ...reference,
-    score: avg,
-    band: scoreBand(avg),
-    validity: "valid",
-    audienceSize: total,
-    factors,
-    prediction: {
-      positiveReplyRate: round1(
-        results.reduce((s, r) => s + r.prediction.positiveReplyRate, 0) / total,
-      ),
-      opportunityRate: round2(
-        results.reduce((s, r) => s + r.prediction.opportunityRate, 0) / total,
-      ),
-      workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
-    },
+    ...result,
+    audienceSize: 0,
+    calibrationSource: `${result.calibrationSource} · exact ${channelWord(step.channel)} · position ${step.position} · ${step.timing}`,
     distribution: {
-      strong: Math.round((counts.strong / total) * 100),
-      medium: Math.round((counts.medium / total) * 100),
-      weak: Math.round((counts.weak / total) * 100),
+      strong: result.band === "strong" ? 100 : 0,
+      medium: result.band === "medium" ? 100 : 0,
+      weak: result.band === "weak" ? 100 : 0,
     },
   };
 }
@@ -516,10 +449,25 @@ export function aggregateProspectSequenceScore(
       calibrationSource: "Prediction unavailable",
     };
   }
-  // first touch weighs more than follow-ups
-  const weights = content.map((s) => (s.position <= 1 ? 2 : 1));
-  const weightSum = weights.reduce((a, b) => a + b, 0);
-  const score = Math.round(results.reduce((s, r, i) => s + r.score * weights[i]!, 0) / weightSum);
+  const invalid = results.find((result) => result.validity !== "valid");
+  if (invalid) {
+    return {
+      ...invalid,
+      score: 0,
+      band: "weak",
+      audienceSize: 1,
+      validity: "insufficient_content",
+      validityReason:
+        "Every message-bearing step needs usable content before this prospect can be predicted.",
+      prediction: {
+        positiveReplyRate: 0,
+        opportunityRate: 0,
+        workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
+      },
+      calibrationSource: "Prospect prediction paused until every message is usable",
+    };
+  }
+  const score = Math.round(results.reduce((sum, result) => sum + result.score, 0) / results.length);
   const factors = results
     .flatMap((r, i) =>
       r.factors.map((f) => ({
@@ -533,12 +481,8 @@ export function aggregateProspectSequenceScore(
   return {
     score,
     band: scoreBand(score),
-    validity: results.some((result) => result.validity === "valid")
-      ? "valid"
-      : "insufficient_content",
-    validityReason: results.every((result) => result.validity !== "valid")
-      ? "Every message-bearing step needs usable content before launch."
-      : undefined,
+    validity: "valid",
+    validityReason: undefined,
     audienceSize: 1,
     prediction: {
       positiveReplyRate: round1(
@@ -559,20 +503,23 @@ export function aggregateProspectSequenceScore(
 }
 
 /**
- * Whole-sequence audience prediction. This is the single source used by Sequence summaries,
- * the launch snapshot and Performance. It is the average of the personalized predictions for
- * every prospect assigned to the variant — never an unrelated generic writing score.
+ * Sequence Optimization Score: the simple mean of all content-bearing
+ * Message Optimization Scores. It is deliberately independent from the
+ * individual Prospect Prediction Scores.
  */
 export function aggregateVariantSequenceScore(
   steps: SequenceStep[],
   variantProspects: Prospect[],
 ): ScoreResult & { distribution: { strong: number; medium: number; weak: number } } {
-  if (!variantProspects.length) {
+  void variantProspects;
+  const content = steps.filter((step) => hasContent(step.channel) && step.hasContent);
+  const results = content.map((step) => aggregateMessageScore(step));
+  if (!results.length) {
     return {
       score: 0,
       band: "weak",
-      validity: "audience_unavailable",
-      validityReason: "Add prospects to this campaign to calculate an audience prediction.",
+      validity: "insufficient_content",
+      validityReason: "This sequence has no message-bearing step to evaluate.",
       audienceSize: 0,
       prediction: {
         positiveReplyRate: 0,
@@ -582,33 +529,38 @@ export function aggregateVariantSequenceScore(
       confidence: "Low",
       comparableMessages: 0,
       factors: [],
-      calibrationSource: "Audience prediction unavailable",
+      calibrationSource: "Sequence optimization unavailable",
       distribution: { strong: 0, medium: 0, weak: 0 },
     };
   }
-
-  const results = variantProspects.map((prospect) =>
-    aggregateProspectSequenceScore(steps, prospect),
-  );
-  const validResults = results.filter((result) => result.validity === "valid");
-  if (!validResults.length) {
+  const invalid = results.find((result) => result.validity !== "valid");
+  if (invalid) {
     return {
-      ...results[0]!,
+      ...invalid,
       score: 0,
       band: "weak",
-      audienceSize: results.length,
+      audienceSize: 0,
+      validity: "insufficient_content",
+      validityReason:
+        "At least one message-bearing step needs usable content before the sequence can be scored.",
+      prediction: {
+        positiveReplyRate: 0,
+        opportunityRate: 0,
+        workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
+      },
+      calibrationSource: "Sequence optimization paused until every message is usable",
       distribution: { strong: 0, medium: 0, weak: 0 },
     };
   }
 
   const average = (select: (result: ScoreResult) => number) =>
-    validResults.reduce((sum, result) => sum + select(result), 0) / validResults.length;
+    results.reduce((sum, result) => sum + select(result), 0) / results.length;
   const score = Math.round(average((result) => result.score));
   const counts = { strong: 0, medium: 0, weak: 0 };
   results.forEach((result) => {
     counts[result.band] += 1;
   });
-  const representative = validResults.reduce((best, result) =>
+  const representative = results.reduce((best, result) =>
     Math.abs(result.score - score) < Math.abs(best.score - score) ? result : best,
   );
   const total = results.length;
@@ -618,17 +570,15 @@ export function aggregateVariantSequenceScore(
     score,
     band: scoreBand(score),
     validity: "valid",
-    validityReason:
-      validResults.length < results.length
-        ? `${results.length - validResults.length} prospect prediction(s) are waiting for complete message content.`
-        : undefined,
-    audienceSize: total,
+    validityReason: undefined,
+    audienceSize: 0,
     prediction: {
       positiveReplyRate: round1(average((result) => result.prediction.positiveReplyRate)),
       opportunityRate: round2(average((result) => result.prediction.opportunityRate)),
       workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
     },
     comparableMessages: Math.round(average((result) => result.comparableMessages)),
+    calibrationSource: `Mean of ${total} context-aware message optimization scores`,
     distribution: {
       strong: Math.round((counts.strong / total) * 100),
       medium: Math.round((counts.medium / total) * 100),

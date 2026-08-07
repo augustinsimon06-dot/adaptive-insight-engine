@@ -211,8 +211,9 @@ export function SequenceScreen() {
                   className="mt-1 font-normal leading-relaxed"
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  This fixed content is sent to every prospect assigned to Sequence{" "}
-                  {selected.variant}. lemScore only predicts its fit — it never edits your message.
+                  lemScore evaluates this exact message in its channel, position and timing context.
+                  Individual prospect fit is calculated separately in Prospect list. It never edits
+                  your copy.
                 </p>
               </div>
             ) : (
@@ -238,7 +239,7 @@ function MobilePanelTrigger({ step, analyzing }: { step: SequenceStep; analyzing
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="xl:hidden">
-          Audience prediction <ScorePill score={result.score} validity={result.validity} />
+          Message score <ScorePill score={result.score} validity={result.validity} />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-md">

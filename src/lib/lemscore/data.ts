@@ -1,6 +1,5 @@
 import type {
   Campaign,
-  CampaignOutcome,
   IntentSignal,
   Prospect,
   ProspectContext,
@@ -212,6 +211,30 @@ const SIGNALS = {
   posts: { type: "content_activity", label: "Posts on rep onboarding", strength: "moderate" },
   none: { type: "none", label: "No strong signal", strength: "none" },
 } satisfies Record<string, IntentSignal>;
+
+/** Stable sender-defined target context used for message-level scoring. */
+export const campaignModelProspect: Prospect = {
+  id: "campaign_model",
+  firstName: "Target",
+  lastName: "Buyer",
+  name: "Target Buyer",
+  company: "Target account",
+  jobTitle: "VP Sales",
+  email: "target@example.com",
+  variant: "A",
+  status: "Not started",
+  context: {
+    persona: "VP Sales",
+    personaGroup: "revenue_leader",
+    industry: "B2B SaaS",
+    companySizeBand: "201-500",
+    geography: "France, Benelux, UK",
+    signal: SIGNALS.hiring6,
+    growth: "Sales team expanding",
+    technologies: ["CRM", "Sales engagement"],
+    publicActivity: "Hiring and onboarding activity",
+  },
+};
 
 const ENABLEMENT_TITLES = [
   "Head of Enablement",
@@ -592,30 +615,47 @@ function generateProspects(total = 12): Prospect[] {
 
 export const prospects: Prospect[] = generateProspects();
 
-/* ------------------------------ demo outcomes ------------------------------ */
+/**
+ * One deterministic beta outcome per launched prospect. Performance and
+ * score-band validation both consume this exact function so their counts can
+ * never contradict each other. The score affects likelihood; the prospect id
+ * keeps the demo stable across refreshes.
+ */
+export function simulateProspectOutcome(
+  prospect: Prospect,
+  score: number,
+): import("./types").ProspectOutcome {
+  const chance = (salt: string, probability: number) =>
+    stableUnit(`${prospect.id}:${salt}`) < Math.max(0, Math.min(0.99, probability));
+  const strength = score / 100;
+  const delivered = chance("delivered", 0.96);
+  const opened = delivered && chance("opened", 0.24 + strength * 0.58);
+  const clicked = opened && chance("clicked", 0.03 + strength * 0.24);
+  const linkedinEngaged = chance("linkedin", 0.02 + strength * 0.25);
+  const positiveReply = delivered && chance("positive", 0.01 + strength * 0.19);
+  const meeting = positiveReply && chance("meeting", 0.2 + strength * 0.42);
+  const opportunity = meeting && chance("opportunity", 0.22 + strength * 0.43);
+  const closedWon = opportunity && chance("won", 0.2 + strength * 0.42);
+  return {
+    delivered,
+    opened,
+    clicked,
+    linkedinEngaged,
+    positiveReply,
+    meeting,
+    opportunity,
+    closedWon,
+    closedLost: opportunity && !closedWon,
+  };
+}
 
-export const simulatedOutcomes: Record<VariantId, CampaignOutcome> = {
-  A: {
-    variant: "A",
-    sends: 18,
-    actualPositiveRate: 16.7,
-    actualOpportunityRate: 5.6,
-    meetings: 2,
-    opportunities: 1,
-    closedWon: 1,
-    closedLost: 2,
-  },
-  B: {
-    variant: "B",
-    sends: 18,
-    actualPositiveRate: 5.6,
-    actualOpportunityRate: 0,
-    meetings: 1,
-    opportunities: 0,
-    closedWon: 0,
-    closedLost: 3,
-  },
-};
+function stableUnit(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  }
+  return (hash >>> 0) / 4294967295;
+}
 
 /** Per-step demo performance metrics used in the Step details view. */
 export const stepMetrics: Record<
