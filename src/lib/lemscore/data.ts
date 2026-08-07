@@ -201,7 +201,7 @@ export const workspaceHistory: WorkspaceHistory = {
 
 /* -------------------------------- prospects -------------------------------- */
 
-const SIGNALS: Record<string, IntentSignal> = {
+const SIGNALS = {
   hiring6: { type: "sales_hiring", label: "6 open sales roles", strength: "strong" },
   hiring7: { type: "sales_hiring", label: "7 open sales roles", strength: "strong" },
   hiring3: { type: "sales_hiring", label: "3 open sales roles", strength: "moderate" },
@@ -211,7 +211,7 @@ const SIGNALS: Record<string, IntentSignal> = {
   tech: { type: "tech_adoption", label: "New CRM rollout", strength: "moderate" },
   posts: { type: "content_activity", label: "Posts on rep onboarding", strength: "moderate" },
   none: { type: "none", label: "No strong signal", strength: "none" },
-};
+} satisfies Record<string, IntentSignal>;
 
 const ENABLEMENT_TITLES = [
   "Head of Enablement",
@@ -246,7 +246,7 @@ const FIXED_ROWS: Seeded[] = [
     company: "Norvella Systems",
     title: "VP Sales",
     variant: "A",
-    signal: SIGNALS.hiring6!,
+    signal: SIGNALS.hiring6,
     industry: "B2B SaaS",
     size: "201-500",
     geo: "France",
@@ -257,7 +257,7 @@ const FIXED_ROWS: Seeded[] = [
     company: "Brightloop Digital",
     title: "Head of Growth",
     variant: "B",
-    signal: SIGNALS.none!,
+    signal: SIGNALS.none,
     industry: "Marketing",
     size: "51-200",
     geo: "Sweden",
@@ -268,7 +268,7 @@ const FIXED_ROWS: Seeded[] = [
     company: "Kaptiva Cloud",
     title: "Sales Director",
     variant: "B",
-    signal: SIGNALS.cro!,
+    signal: SIGNALS.cro,
     industry: "B2B SaaS",
     size: "201-500",
     geo: "France",
@@ -279,7 +279,7 @@ const FIXED_ROWS: Seeded[] = [
     company: "Trailmark Finance",
     title: "Head of Enablement",
     variant: "A",
-    signal: SIGNALS.hiring7!,
+    signal: SIGNALS.hiring7,
     industry: "Financial Services",
     size: "501-1000",
     geo: "Germany",
@@ -290,7 +290,7 @@ const FIXED_ROWS: Seeded[] = [
     company: "Cendrix Software",
     title: "Revenue Enablement Manager",
     variant: "B",
-    signal: SIGNALS.leader!,
+    signal: SIGNALS.leader,
     industry: "B2B SaaS",
     size: "51-200",
     geo: "France",
@@ -304,7 +304,7 @@ const TITLES = ["VP Sales","Sales Director","Head of Growth","Chief Revenue Offi
 const INDUSTRIES = ["B2B SaaS","Financial Services","Marketing","Manufacturing","Healthcare","IT Services"];
 const SIZES: ProspectContext["companySizeBand"][] = ["1-50","51-200","201-500","501-1000","1000+"];
 const GEOS = ["France","Germany","United Kingdom","Netherlands","Spain","Sweden","United States"];
-const SIGNAL_POOL = [SIGNALS.hiring6!, SIGNALS.hiring3!, SIGNALS.cro!, SIGNALS.leader!, SIGNALS.funding!, SIGNALS.tech!, SIGNALS.posts!, SIGNALS.none!, SIGNALS.none!, SIGNALS.hiring7!];
+const SIGNAL_POOL = [SIGNALS.hiring6, SIGNALS.hiring3, SIGNALS.cro, SIGNALS.leader, SIGNALS.funding, SIGNALS.tech, SIGNALS.posts, SIGNALS.none, SIGNALS.none, SIGNALS.hiring7];
 const TECHS = [["Salesforce","Gong"],["HubSpot","Outreach"],["Pipedrive"],["Salesforce","Clari","Chorus"],["Dynamics 365"]];
 
 function buildProspect(s: Seeded, index: number): Prospect {
