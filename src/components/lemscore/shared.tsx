@@ -123,7 +123,12 @@ export type TrendDetail = {
 
 export function TrendArrow({ trend }: { trend: "up" | "down" | "flat" }) {
   const Icon = trend === "up" ? ArrowUp : trend === "down" ? ArrowDown : Equal;
-  const label = trend === "up" ? "above prediction" : trend === "down" ? "below prediction" : "in line with prediction";
+  const label =
+    trend === "up"
+      ? "above prediction"
+      : trend === "down"
+        ? "below prediction"
+        : "in line with prediction";
   return (
     <span
       className={cn(
@@ -161,8 +166,14 @@ export function TrendIndicator({ detail, className }: { detail: TrendDetail; cla
         <Line label="Score at launch" value={detail.launchScore ?? "—"} />
         <Line label="Current score" value={detail.currentScore} />
         <Line label="Predicted positive reply rate" value={`${detail.predictedPositive}%`} />
-        <Line label="Actual positive reply rate" value={detail.actualPositive === null ? "—" : `${detail.actualPositive}%`} />
-        <Line label="Predicted qualified opportunity rate" value={`${detail.predictedOpportunity}%`} />
+        <Line
+          label="Actual positive reply rate"
+          value={detail.actualPositive === null ? "—" : `${detail.actualPositive}%`}
+        />
+        <Line
+          label="Predicted qualified opportunity rate"
+          value={`${detail.predictedOpportunity}%`}
+        />
         <Line
           label="Actual qualified opportunity rate"
           value={detail.actualOpportunity === null ? "—" : `${detail.actualOpportunity}%`}
@@ -186,7 +197,11 @@ function Line({ label, value }: { label: string; value: ReactNode }) {
 }
 
 export function Panel({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("rounded-xl border border-border bg-card shadow-card", className)}>{children}</div>;
+  return (
+    <div className={cn("rounded-xl border border-border bg-card shadow-card", className)}>
+      {children}
+    </div>
+  );
 }
 
 export function LemMark({ className }: { className?: string }) {

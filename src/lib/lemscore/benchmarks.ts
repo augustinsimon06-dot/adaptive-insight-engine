@@ -88,7 +88,14 @@ const CHANNEL_BASE: Record<Exclude<OutreachChannel, "wait" | "profile_visit">, C
 
 const PERSONA_MOD: Record<
   PersonaGroup,
-  { lengthFactor: number; tone: string[]; pains: string[]; proof: string; cta: string; posMod: number }
+  {
+    lengthFactor: number;
+    tone: string[];
+    pains: string[];
+    proof: string;
+    cta: string;
+    posMod: number;
+  }
 > = {
   revenue_leader: {
     lengthFactor: 0.8,

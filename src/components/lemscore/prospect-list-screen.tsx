@@ -4,14 +4,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useLemScore } from "@/lib/lemscore/store";
 import { scoreBand } from "@/lib/lemscore/scoring";
 import { prospects as allProspects } from "@/lib/lemscore/data";
 import type { Prospect } from "@/lib/lemscore/types";
-import { DemoBadge, ScorePill } from "./shared";
+import { DemoBadge, ScorePill, bandWord } from "./shared";
 import { FactorRow } from "./score-panel";
 
 const PAGE_SIZE = 15;
@@ -26,21 +32,34 @@ export function ProspectListScreen() {
     let list = allProspects.map((p) => ({ p, score: prospectScore(p.id).score }));
     if (filters.search.trim()) {
       const q = filters.search.toLowerCase();
-      list = list.filter(({ p }) => `${p.name} ${p.company} ${p.jobTitle}`.toLowerCase().includes(q));
+      list = list.filter(({ p }) =>
+        `${p.name} ${p.company} ${p.jobTitle}`.toLowerCase().includes(q),
+      );
     }
     if (filters.variant !== "all") list = list.filter(({ p }) => p.variant === filters.variant);
     if (filters.persona !== "all") list = list.filter(({ p }) => p.jobTitle === filters.persona);
-    if (filters.band !== "all") list = list.filter(({ score }) => scoreBand(score) === filters.band);
-    if (sortDir) list = [...list].sort((a, b) => (sortDir === "asc" ? a.score - b.score : b.score - a.score));
+    if (filters.band !== "all")
+      list = list.filter(({ score }) => scoreBand(score) === filters.band);
+    if (sortDir)
+      list = [...list].sort((a, b) => (sortDir === "asc" ? a.score - b.score : b.score - a.score));
     return list;
   }, [filters, sortDir, prospectScore]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const current = rows.slice((Math.min(page, pageCount) - 1) * PAGE_SIZE, Math.min(page, pageCount) * PAGE_SIZE);
+  const current = rows.slice(
+    (Math.min(page, pageCount) - 1) * PAGE_SIZE,
+    Math.min(page, pageCount) * PAGE_SIZE,
+  );
   const personas = Array.from(new Set(allProspects.map((p) => p.jobTitle))).sort();
 
   const statusOf = (p: Prospect) =>
-    excluded.includes(p.id) ? "Excluded" : moved[p.id] ? `Moved · ${moved[p.id]}` : launched ? "In sequence" : "Not started";
+    excluded.includes(p.id)
+      ? "Excluded"
+      : moved[p.id]
+        ? `Moved · ${moved[p.id]}`
+        : launched
+          ? "In sequence"
+          : "Not started";
 
   return (
     <div className="min-h-[calc(100vh-6.5rem)] space-y-4 bg-surface px-6 py-5">
@@ -48,13 +67,17 @@ export function ProspectListScreen() {
         <h2 className="text-base font-semibold">Prospect list</h2>
         <DemoBadge />
         <span className="text-xs text-muted-foreground">
-          Each prospect receives exactly one variant. The score evaluates the complete fixed sequence assigned to them.
+          Each prospect receives exactly one variant. The score evaluates the complete fixed
+          sequence assigned to them.
         </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
         <div className="relative">
-          <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <Search
+            className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             aria-label="Search prospects"
             placeholder="Search prospects"
@@ -80,7 +103,9 @@ export function ProspectListScreen() {
         <FilterSelect
           label="Variant"
           value={filters.variant}
-          onChange={(v) => update({ filters: { ...filters, variant: v as typeof filters.variant } })}
+          onChange={(v) =>
+            update({ filters: { ...filters, variant: v as typeof filters.variant } })
+          }
           options={[
             ["all", "A and B"],
             ["A", "Sequence A"],
@@ -107,7 +132,9 @@ export function ProspectListScreen() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              <th className="px-3 py-2.5"><span className="sr-only">Select</span></th>
+              <th className="px-3 py-2.5">
+                <span className="sr-only">Select</span>
+              </th>
               <th className="px-3 py-2.5 font-medium">Name</th>
               <th className="px-3 py-2.5 font-medium">lemScore</th>
               <th className="px-3 py-2.5 font-medium">Variant</th>
@@ -127,7 +154,9 @@ export function ProspectListScreen() {
                     aria-label={`Select ${p.name}`}
                     checked={selected.includes(p.id)}
                     onCheckedChange={() =>
-                      setSelected((prev) => (prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id]))
+                      setSelected((prev) =>
+                        prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id],
+                      )
                     }
                   />
                 </td>
@@ -148,7 +177,9 @@ export function ProspectListScreen() {
                 <td className="px-3 py-2 whitespace-nowrap">{p.context.industry}</td>
                 <td className="px-3 py-2">{p.context.companySizeBand}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{p.context.signal.label}</td>
-                <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">{statusOf(p)}</td>
+                <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
+                  {statusOf(p)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -159,10 +190,20 @@ export function ProspectListScreen() {
         <span>
           {rows.length} prospects · page {Math.min(page, pageCount)} of {pageCount}
         </span>
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
           Previous
         </Button>
-        <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page >= pageCount}
+          onClick={() => setPage((p) => p + 1)}
+        >
           Next
         </Button>
       </div>
@@ -206,11 +247,13 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
   const result = prospectScore(p.id);
   const trend = trendFor(`variant:${p.variant}`, result.score, p.variant);
   const out = outcome(p.variant);
-  const signalRelevant = p.context.signal.type !== "none";
-  const classification = signalRelevant ? "Message mismatch" : "Campaign mismatch";
-  const classificationText = signalRelevant
-    ? "The prospect fits the campaign audience, but the fixed message angle is poorly aligned with this persona and channel context."
-    : "This prospect belongs to the broader ICP but has no signal connected to the sales-onboarding angle used in this campaign.";
+  const priority = [...result.factors].sort((a, b) => a.contribution - b.contribution)[0];
+  const summary =
+    result.score >= 80
+      ? "The assigned fixed sequence is well aligned with this prospect's context."
+      : result.score >= 60
+        ? "The sequence is credible, but one or two contextual elements limit the predicted fit."
+        : "The current sequence has a weak fit with this prospect's context.";
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
@@ -223,24 +266,30 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
         <div className="space-y-4 px-4 pb-8 text-xs">
           <p className="text-sm">
             <span className="font-semibold">
-              {result.score}/100 — {result.score >= 80 ? "Strong fit" : classification}
+              {result.score}/100 — {bandWord(result.score)}
             </span>
             <br />
-            <span className="text-muted-foreground">{result.score >= 80 ? "This prospect matches the campaign angle and message." : classificationText}</span>
+            <span className="text-muted-foreground">{summary}</span>
           </p>
+
+          <div className="rounded-lg border border-primary/30 bg-primary/[0.035] p-3">
+            <h3 className="text-xs font-semibold text-primary">Recommended review</h3>
+            <p className="mt-1 leading-relaxed">
+              {priority
+                ? `${priority.label}: ${priority.benchmark}`
+                : "No major adjustment is suggested."}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              No message is changed automatically.
+            </p>
+          </div>
 
           <dl className="space-y-1.5">
             <Line label="Assigned variant" value={`Sequence ${p.variant}`} />
-            <Line label="Score at launch" value={trend.snapshot ? trend.snapshot.score : "Not launched yet"} />
             <Line
-              label="Trend"
-              value={launched && trend.recalibrated ? `${trend.score} (${trend.trend})` : "Not enough outcomes to recalibrate yet."}
+              label="Variant score at launch"
+              value={trend.snapshot ? trend.snapshot.score : "Not launched yet"}
             />
-            <Line label="Predicted positive reply rate" value={`${result.prediction.positiveReplyRate}%`} />
-            <Line label="Predicted qualified opportunity rate" value={`${result.prediction.opportunityRate}%`} />
-            <Line label="Actual positive reply rate (variant)" value={out ? `${out.actualPositiveRate}%` : "—"} />
-            <Line label="Confidence" value={result.confidence} />
-            <Line label="Comparable messages" value={result.comparableMessages.toLocaleString()} />
             <Line label="Persona" value={p.context.persona} />
             <Line label="Industry" value={p.context.industry} />
             <Line label="Company size" value={p.context.companySizeBand} />
@@ -252,17 +301,53 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
           </dl>
 
           <div>
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Strongest factors</h3>
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Why this score
+            </h3>
             <ul className="mt-2 space-y-2">
-              {result.factors.slice(0, 6).map((f) => (
+              {result.factors.slice(0, 4).map((f) => (
                 <FactorRow key={f.label} factor={f} />
               ))}
             </ul>
           </div>
 
+          <details className="rounded-lg border border-border p-3">
+            <summary className="cursor-pointer font-medium">Advanced prediction details</summary>
+            <dl className="mt-3 space-y-1.5">
+              <Line
+                label="Variant trend"
+                value={
+                  launched && trend.recalibrated
+                    ? `${trend.score} (${trend.trend})`
+                    : "Waiting for campaign outcomes"
+                }
+              />
+              <Line
+                label="Predicted positive replies"
+                value={`${result.prediction.positiveReplyRate}%`}
+              />
+              <Line
+                label="Predicted opportunities"
+                value={`${result.prediction.opportunityRate}%`}
+              />
+              <Line
+                label="Actual positive replies (variant)"
+                value={out ? `${out.actualPositiveRate}%` : "—"}
+              />
+              <Line label="Confidence" value={result.confidence} />
+              <Line
+                label="Comparable messages"
+                value={result.comparableMessages.toLocaleString()}
+              />
+            </dl>
+          </details>
+
           <div className="space-y-2 rounded-lg border border-border p-3">
             <h3 className="text-xs font-semibold">Prospect management</h3>
-            <p className="text-muted-foreground">Nothing is removed or moved automatically. lemScore never generates a unique message for a prospect.</p>
+            <p className="text-muted-foreground">
+              Nothing is removed or moved automatically. lemScore never generates a unique message
+              for a prospect.
+            </p>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"

@@ -20,7 +20,7 @@ import {
 } from "./scoring";
 import type { CampaignOutcome, ScoreSnapshot, SequenceStep, VariantId } from "./types";
 
-const STORAGE_KEY = "lemscore.beta.v1";
+const STORAGE_KEY = "lemscore.beta.v2";
 
 type Filters = {
   search: string;
@@ -86,7 +86,11 @@ type Store = Persisted & {
   prospectScore: (prospectId: string) => ReturnType<typeof aggregateProspectSequenceScore>;
   variantScore: (variant: VariantId) => number;
   outcome: (variant: VariantId) => CampaignOutcome | null;
-  trendFor: (key: string, currentScore: number, variant: VariantId) => ReturnType<typeof recalibrateAfterOutcomes> & {
+  trendFor: (
+    key: string,
+    currentScore: number,
+    variant: VariantId,
+  ) => ReturnType<typeof recalibrateAfterOutcomes> & {
     snapshot: ScoreSnapshot | null;
   };
   launch: () => void;
@@ -200,7 +204,12 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
         };
       }
       return {
-        ...recalibrateAfterOutcomes(snapshot, currentScore, outcome(variant), MIN_OUTCOMES_FOR_RECALIBRATION),
+        ...recalibrateAfterOutcomes(
+          snapshot,
+          currentScore,
+          outcome(variant),
+          MIN_OUTCOMES_FOR_RECALIBRATION,
+        ),
         snapshot,
       };
     },
@@ -226,7 +235,12 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
         });
       const list = prospectsFor(variant);
       const avg = list.length
-        ? Math.round(list.reduce((sum, p) => sum + aggregateProspectSequenceScore(variantSteps, p).score, 0) / list.length)
+        ? Math.round(
+            list.reduce(
+              (sum, p) => sum + aggregateProspectSequenceScore(variantSteps, p).score,
+              0,
+            ) / list.length,
+          )
         : 0;
       const firstStep = variantSteps.find((s) => s.hasContent)!;
       const firstScore = aggregateMessageScore(firstStep, list);
@@ -238,14 +252,28 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
         capturedAt,
       };
     });
-    setState((prev) => ({ ...prev, launched: true, launchedAt: capturedAt, snapshots, mainTab: "performance" }));
+    setState((prev) => ({
+      ...prev,
+      launched: true,
+      launchedAt: capturedAt,
+      snapshots,
+      mainTab: "performance",
+    }));
   }, [steps, prospectsFor]);
 
   const value = useMemo<Store>(
     () => ({
       ...state,
       update,
-      reset: () => setState({ ...defaultState }),
+      reset: () => {
+        try {
+          window.localStorage.removeItem(STORAGE_KEY);
+          window.localStorage.removeItem("lemscore.beta.v1");
+        } catch {
+          /* localStorage may be unavailable in private browsing */
+        }
+        setState({ ...defaultState });
+      },
       steps,
       step,
       setStepContent,

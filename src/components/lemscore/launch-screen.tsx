@@ -20,7 +20,9 @@ export function LaunchScreen() {
       <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <div className="space-y-3">
           <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Prospects</h3>
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Prospects
+            </h3>
             <p className="mt-1 text-2xl font-semibold tabular-nums">{activeProspects.length}</p>
             <p className="text-xs text-muted-foreground">
               {prospectsFor("A").length} on Sequence A · {prospectsFor("B").length} on Sequence B
@@ -34,7 +36,9 @@ export function LaunchScreen() {
             </ul>
           </div>
           <div className="rounded-xl border border-border bg-card p-4 text-xs">
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Sender &amp; schedule</h3>
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Sender &amp; schedule
+            </h3>
             <p className="mt-1.5 font-medium text-foreground">{baseCampaign.sender.name}</p>
             <p className="text-muted-foreground">{baseCampaign.sender.email}</p>
             <p className="mt-2 text-muted-foreground">{baseCampaign.schedule}</p>
@@ -56,7 +60,10 @@ export function LaunchScreen() {
                 {steps(variant).map((s) => {
                   if (!s.hasContent) {
                     return (
-                      <div key={s.id} className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                      <div
+                        key={s.id}
+                        className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground"
+                      >
                         {s.label} · {s.timing} — no message content, no lemScore
                       </div>
                     );
@@ -71,13 +78,20 @@ export function LaunchScreen() {
                           <span className="font-semibold">lemScore {r.score}/100</span>
                           <InfoPopover>
                             <div className="space-y-1">
-                              <p className="font-medium">Fit of this fixed message with its assigned prospects</p>
+                              <p className="font-medium">
+                                Fit of this fixed message with its assigned prospects
+                              </p>
                               <p>Strong fit: {r.distribution.strong}%</p>
                               <p>Medium fit: {r.distribution.medium}%</p>
                               <p>Weak fit: {r.distribution.weak}%</p>
                               <p>Confidence: {r.confidence}</p>
-                              <p>Predicted positive reply rate: {r.prediction.positiveReplyRate}%</p>
-                              <p>Predicted qualified opportunity rate: {r.prediction.opportunityRate}%</p>
+                              <p>
+                                Predicted positive reply rate: {r.prediction.positiveReplyRate}%
+                              </p>
+                              <p>
+                                Predicted qualified opportunity rate: {r.prediction.opportunityRate}
+                                %
+                              </p>
                               <DemoBadge className="mt-1" />
                             </div>
                           </InfoPopover>
@@ -85,7 +99,9 @@ export function LaunchScreen() {
                         <ScorePill score={r.score} suffix={false} className="ml-auto" />
                       </div>
                       {s.subject && <p className="mt-2 text-xs font-medium">{s.subject}</p>}
-                      <p className="mt-1 line-clamp-3 text-xs whitespace-pre-line text-muted-foreground">{s.body}</p>
+                      <p className="mt-1 line-clamp-3 text-xs whitespace-pre-line text-muted-foreground">
+                        {s.body}
+                      </p>
                     </div>
                   );
                 })}
@@ -99,11 +115,13 @@ export function LaunchScreen() {
               onClick={() => {
                 launch();
                 toast.success("Demo campaign launched", {
-                  description: "No real message was sent. lemScore snapshots were frozen and simulated outcomes unlocked.",
+                  description:
+                    "No real message was sent. lemScore snapshots were frozen and simulated outcomes unlocked.",
                 });
               }}
             >
-              <Rocket className="h-4 w-4" /> {launched ? "Campaign active (demo)" : "Launch campaign (demo)"}
+              <Rocket className="h-4 w-4" />{" "}
+              {launched ? "A/B campaign active (demo)" : "Launch A/B campaign (demo)"}
             </Button>
             <p className="text-xs text-muted-foreground">
               {launched

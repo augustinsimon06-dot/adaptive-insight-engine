@@ -15,12 +15,67 @@ import type {
   WorkspaceHistory,
 } from "./types";
 
-const OUTCOME_WORDS = ["ramp", "quota", "pipeline", "revenue", "productivity", "faster", "attainment", "results", "meetings"];
-const PAIN_WORDS = ["lose", "weeks", "slow", "struggle", "cost", "churn", "onboarding", "first meetings", "ramp"];
-const TRIGGER_WORDS = ["hiring", "hires", "expanding", "new reps", "sales team", "cro", "new leader", "growing", "recruit"];
-const SPAM_WORDS = ["free", "risk free", "act now", "limited", "guarantee", "100%", "!!!", "click here"];
-const HARD_CTA = ["book a demo", "book a call", "schedule a demo", "buy", "pricing call", "book 30 minutes", "run a full product demo"];
-const SOFT_CTA = ["would you be open", "worth a quick look", "what do you think", "curious", "happy to share", "how are you handling", "open to"];
+const OUTCOME_WORDS = [
+  "ramp",
+  "quota",
+  "pipeline",
+  "revenue",
+  "productivity",
+  "faster",
+  "attainment",
+  "results",
+  "meetings",
+];
+const PAIN_WORDS = [
+  "lose",
+  "weeks",
+  "slow",
+  "struggle",
+  "cost",
+  "churn",
+  "onboarding",
+  "first meetings",
+  "ramp",
+];
+const TRIGGER_WORDS = [
+  "hiring",
+  "hires",
+  "expanding",
+  "new reps",
+  "sales team",
+  "cro",
+  "new leader",
+  "growing",
+  "recruit",
+];
+const SPAM_WORDS = [
+  "free",
+  "risk free",
+  "act now",
+  "limited",
+  "guarantee",
+  "100%",
+  "!!!",
+  "click here",
+];
+const HARD_CTA = [
+  "book a demo",
+  "book a call",
+  "schedule a demo",
+  "buy",
+  "pricing call",
+  "book 30 minutes",
+  "run a full product demo",
+];
+const SOFT_CTA = [
+  "would you be open",
+  "worth a quick look",
+  "what do you think",
+  "curious",
+  "happy to share",
+  "how are you handling",
+  "open to",
+];
 
 export function extractMessageFeatures(subject: string | undefined, body: string): MessageFeatures {
   const text = `${subject ?? ""}\n${body}`;
@@ -45,7 +100,8 @@ export function extractMessageFeatures(subject: string | undefined, body: string
     wordCount: words.length,
     subjectLength: subject ? subject.trim().split(/\s+/).filter(Boolean).length : 0,
     questionCount: (body.match(/\?/g) ?? []).length,
-    personalizationVars: (body.match(/{{\s*\w+\s*}}/g) ?? []).length + ((subject?.match(/{{\s*\w+\s*}}/g) ?? []).length),
+    personalizationVars:
+      (body.match(/{{\s*\w+\s*}}/g) ?? []).length + (subject?.match(/{{\s*\w+\s*}}/g) ?? []).length,
     outcomeLanguage: count(OUTCOME_WORDS),
     painLanguage: count(PAIN_WORDS),
     triggerLanguage: count(TRIGGER_WORDS),
@@ -63,13 +119,19 @@ export function calculateConfidence(sampleSize: number, workspace: WorkspaceHist
   return "Low";
 }
 
-export function calculatePredictedRates(score: number, benchmark: BenchmarkProfile, workspace: WorkspaceHistory): Prediction {
+export function calculatePredictedRates(
+  score: number,
+  benchmark: BenchmarkProfile,
+  workspace: WorkspaceHistory,
+): Prediction {
   const multiplier = 0.5 + (score / 100) * 1.1;
   const blend = workspace.maturity === "calibrated" ? 0.6 : 0.15;
   const basePositive =
-    benchmark.baselinePositiveRate * (1 - blend) + workspace.baselinePositiveRate * blend * (benchmark.baselinePositiveRate / 5);
+    benchmark.baselinePositiveRate * (1 - blend) +
+    workspace.baselinePositiveRate * blend * (benchmark.baselinePositiveRate / 5);
   const baseOpportunity =
-    benchmark.baselineOpportunityRate * (1 - blend) + workspace.baselineOpportunityRate * blend * (benchmark.baselineOpportunityRate / 1.7);
+    benchmark.baselineOpportunityRate * (1 - blend) +
+    workspace.baselineOpportunityRate * blend * (benchmark.baselineOpportunityRate / 1.7);
   return {
     positiveReplyRate: round1(basePositive * multiplier),
     opportunityRate: round2(baseOpportunity * multiplier),
@@ -83,7 +145,7 @@ export function scoreBand(score: number): ScoreBand {
 
 export function bandLabel(score: number) {
   const b = scoreBand(score);
-  return b === "strong" ? "Strong fit" : b === "medium" ? "Good — improvements available" : "Weak fit for this context";
+  return b === "strong" ? "Strong fit" : b === "medium" ? "Medium fit" : "Weak fit";
 }
 
 /** explainScoreFactors + scoreMessageForProspect */
@@ -103,8 +165,22 @@ export function scoreMessageForProspect(step: SequenceStep, prospect: Prospect):
       ? "lemlist benchmark + workspace history"
       : "lemlist benchmark (anonymized patterns)";
   const factors: ScoreFactor[] = [];
-  const add = (label: string, contribution: number, observed: string, benchmarkText: string, conf: Confidence = confidence) =>
-    factors.push({ label, contribution: Math.round(contribution), observed, benchmark: benchmarkText, source, sampleSize: sample, confidence: conf });
+  const add = (
+    label: string,
+    contribution: number,
+    observed: string,
+    benchmarkText: string,
+    conf: Confidence = confidence,
+  ) =>
+    factors.push({
+      label,
+      contribution: Math.round(contribution),
+      observed,
+      benchmark: benchmarkText,
+      source,
+      sampleSize: sample,
+      confidence: conf,
+    });
 
   /* Length */
   const [lo, hi] = benchmark.preferredLength;
@@ -137,7 +213,8 @@ export function scoreMessageForProspect(step: SequenceStep, prospect: Prospect):
   const signalRelevant = benchmark.relevantTriggers.includes(prospect.context.signal.type);
   const usesTrigger = f.triggerLanguage > 0;
   let triggerDelta = 0;
-  if (signalRelevant && usesTrigger) triggerDelta = prospect.context.signal.strength === "strong" ? 9 : 6;
+  if (signalRelevant && usesTrigger)
+    triggerDelta = prospect.context.signal.strength === "strong" ? 9 : 6;
   else if (signalRelevant && !usesTrigger) triggerDelta = -6;
   else if (!signalRelevant && usesTrigger) triggerDelta = -4;
   add(
@@ -175,12 +252,15 @@ export function scoreMessageForProspect(step: SequenceStep, prospect: Prospect):
   add(
     "Proof relevance",
     proofDelta,
-    f.proofSignals ? `${f.proofSignals} numeric proof element(s) present.` : "No numeric proof element.",
+    f.proofSignals
+      ? `${f.proofSignals} numeric proof element(s) present.`
+      : "No numeric proof element.",
     `Preferred proof for this segment: ${benchmark.preferredProof}.`,
   );
 
   /* CTA fit */
-  const wantsSoft = benchmark.positionBand === "first_touch" || prospect.context.personaGroup === "revenue_leader";
+  const wantsSoft =
+    benchmark.positionBand === "first_touch" || prospect.context.personaGroup === "revenue_leader";
   let ctaDelta = 0;
   if (f.ctaType === "none") ctaDelta = -6;
   else if (f.ctaType === "soft_question") ctaDelta = wantsSoft ? 8 : 4;
@@ -215,8 +295,14 @@ export function scoreMessageForProspect(step: SequenceStep, prospect: Prospect):
     );
   }
 
-  const raw = 68 + factors.reduce((s, x) => s + x.contribution, 0);
-  const score = Math.max(0, Math.min(100, Math.round(raw)));
+  /*
+   * Contributions are diagnostic deltas, not percentages.  The previous
+   * implementation started at 68 and added every delta at full value, which
+   * pushed nearly every credible message to 99–100. A neutral message now
+   * starts at 50 and evidence moves it gradually in either direction.
+   */
+  const evidenceDelta = factors.reduce((s, x) => s + x.contribution, 0);
+  const score = Math.max(0, Math.min(96, Math.round(50 + evidenceDelta * 0.8)));
   const prediction = calculatePredictedRates(score, benchmark, workspaceHistory);
 
   return {
@@ -234,11 +320,18 @@ export function scoreMessageForProspect(step: SequenceStep, prospect: Prospect):
 }
 
 function channelWord(channel: SequenceStep["channel"]) {
-  return channel === "email" ? "emails" : channel === "linkedin_message" ? "LinkedIn messages" : "messages";
+  return channel === "email"
+    ? "emails"
+    : channel === "linkedin_message"
+      ? "LinkedIn messages"
+      : "messages";
 }
 
 /** aggregateMessageScore — one fixed message across all prospects of its variant */
-export function aggregateMessageScore(step: SequenceStep, variantProspects: Prospect[]): ScoreResult & {
+export function aggregateMessageScore(
+  step: SequenceStep,
+  variantProspects: Prospect[],
+): ScoreResult & {
   distribution: { strong: number; medium: number; weak: number };
 } {
   const results = variantProspects.map((p) => scoreMessageForProspect(step, p));
@@ -247,7 +340,35 @@ export function aggregateMessageScore(step: SequenceStep, variantProspects: Pros
     return { ...empty, distribution: { strong: 0, medium: 0, weak: 0 } };
   }
   const avg = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
-  const reference = results.reduce((best, r) => (Math.abs(r.score - avg) < Math.abs(best.score - avg) ? r : best), results[0]!);
+  const reference = results.reduce(
+    (best, r) => (Math.abs(r.score - avg) < Math.abs(best.score - avg) ? r : best),
+    results[0]!,
+  );
+  const groupedFactors = new Map<string, ScoreFactor[]>();
+  results.forEach((result) => {
+    result.factors.forEach((factor) => {
+      const group = groupedFactors.get(factor.label) ?? [];
+      group.push(factor);
+      groupedFactors.set(factor.label, group);
+    });
+  });
+  const factors = Array.from(groupedFactors.entries())
+    .map(([label, group]) => {
+      const representative = group.reduce((best, factor) =>
+        Math.abs(factor.contribution) > Math.abs(best.contribution) ? factor : best,
+      );
+      return {
+        ...representative,
+        label,
+        contribution: Math.round(
+          group.reduce((sum, factor) => sum + factor.contribution, 0) / group.length,
+        ),
+        sampleSize: Math.round(
+          group.reduce((sum, factor) => sum + factor.sampleSize, 0) / group.length,
+        ),
+      };
+    })
+    .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
   const counts = { strong: 0, medium: 0, weak: 0 };
   results.forEach((r) => {
     counts[r.band] += 1;
@@ -257,9 +378,14 @@ export function aggregateMessageScore(step: SequenceStep, variantProspects: Pros
     ...reference,
     score: avg,
     band: scoreBand(avg),
+    factors,
     prediction: {
-      positiveReplyRate: round1(results.reduce((s, r) => s + r.prediction.positiveReplyRate, 0) / total),
-      opportunityRate: round2(results.reduce((s, r) => s + r.prediction.opportunityRate, 0) / total),
+      positiveReplyRate: round1(
+        results.reduce((s, r) => s + r.prediction.positiveReplyRate, 0) / total,
+      ),
+      opportunityRate: round2(
+        results.reduce((s, r) => s + r.prediction.opportunityRate, 0) / total,
+      ),
       workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
     },
     distribution: {
@@ -271,7 +397,10 @@ export function aggregateMessageScore(step: SequenceStep, variantProspects: Pros
 }
 
 /** aggregateProspectSequenceScore — full fixed sequence assigned to one prospect */
-export function aggregateProspectSequenceScore(steps: SequenceStep[], prospect: Prospect): ScoreResult {
+export function aggregateProspectSequenceScore(
+  steps: SequenceStep[],
+  prospect: Prospect,
+): ScoreResult {
   const content = steps.filter((s) => hasContent(s.channel) && s.hasContent);
   const results = content.map((s) => scoreMessageForProspect(s, prospect));
   if (!results.length) return scoreMessageForProspect(steps[0]!, prospect);
@@ -280,7 +409,12 @@ export function aggregateProspectSequenceScore(steps: SequenceStep[], prospect: 
   const weightSum = weights.reduce((a, b) => a + b, 0);
   const score = Math.round(results.reduce((s, r, i) => s + r.score * weights[i]!, 0) / weightSum);
   const factors = results
-    .flatMap((r, i) => r.factors.map((f) => ({ ...f, label: `${f.label} · ${content[i]!.label.split("·")[1]?.trim() ?? ""}` })))
+    .flatMap((r, i) =>
+      r.factors.map((f) => ({
+        ...f,
+        label: `${f.label} · ${content[i]!.label.split("·")[1]?.trim() ?? ""}`,
+      })),
+    )
     .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
     .slice(0, 8);
   const first = results[0]!;
@@ -288,12 +422,18 @@ export function aggregateProspectSequenceScore(steps: SequenceStep[], prospect: 
     score,
     band: scoreBand(score),
     prediction: {
-      positiveReplyRate: round1(results.reduce((s, r) => s + r.prediction.positiveReplyRate, 0) / results.length),
-      opportunityRate: round2(results.reduce((s, r) => s + r.prediction.opportunityRate, 0) / results.length),
+      positiveReplyRate: round1(
+        results.reduce((s, r) => s + r.prediction.positiveReplyRate, 0) / results.length,
+      ),
+      opportunityRate: round2(
+        results.reduce((s, r) => s + r.prediction.opportunityRate, 0) / results.length,
+      ),
       workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
     },
     confidence: first.confidence,
-    comparableMessages: Math.round(results.reduce((s, r) => s + r.comparableMessages, 0) / results.length),
+    comparableMessages: Math.round(
+      results.reduce((s, r) => s + r.comparableMessages, 0) / results.length,
+    ),
     factors,
     calibrationSource: first.calibrationSource,
   };
@@ -315,7 +455,8 @@ export function recalibrateAfterOutcomes(
     };
   }
   const positiveRatio = outcome.actualPositiveRate / Math.max(0.1, snapshot.predictedPositiveRate);
-  const oppRatio = outcome.actualOpportunityRate / Math.max(0.05, snapshot.predictedOpportunityRate);
+  const oppRatio =
+    outcome.actualOpportunityRate / Math.max(0.05, snapshot.predictedOpportunityRate);
   const ratio = positiveRatio * 0.6 + oppRatio * 0.4;
   const score = Math.max(0, Math.min(100, Math.round(snapshot.score * (1 + 0.45 * (ratio - 1)))));
   const diff = score - snapshot.score;

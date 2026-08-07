@@ -295,17 +295,236 @@ const FIXED_ROWS: Seeded[] = [
     size: "51-200",
     geo: "France",
   },
+  {
+    first: "Julia",
+    last: "Marchetti",
+    company: "Fjordline Tech",
+    title: "Head of Sales",
+    variant: "A",
+    signal: SIGNALS.hiring3,
+    industry: "B2B SaaS",
+    size: "51-200",
+    geo: "Italy",
+  },
+  {
+    first: "Diego",
+    last: "Verhoeven",
+    company: "Astridge Bank",
+    title: "Chief Revenue Officer",
+    variant: "A",
+    signal: SIGNALS.funding,
+    industry: "Financial Services",
+    size: "201-500",
+    geo: "Netherlands",
+  },
+  {
+    first: "Amara",
+    last: "Dupont",
+    company: "Onyxa Media",
+    title: "Head of Enablement",
+    variant: "A",
+    signal: SIGNALS.posts,
+    industry: "Marketing",
+    size: "51-200",
+    geo: "France",
+  },
+  {
+    first: "Hannah",
+    last: "Sorensen",
+    company: "Trailmark Group",
+    title: "VP Revenue",
+    variant: "B",
+    signal: SIGNALS.funding,
+    industry: "Financial Services",
+    size: "501-1000",
+    geo: "Denmark",
+  },
+  {
+    first: "Owen",
+    last: "Hartley",
+    company: "Ridgeway Logistics",
+    title: "VP Sales",
+    variant: "B",
+    signal: SIGNALS.none,
+    industry: "IT Services",
+    size: "1000+",
+    geo: "United Kingdom",
+  },
+  {
+    first: "Rui",
+    last: "Castellan",
+    company: "Cendrix Europe",
+    title: "Sales Operations Manager",
+    variant: "A",
+    signal: SIGNALS.tech,
+    industry: "B2B SaaS",
+    size: "201-500",
+    geo: "Portugal",
+  },
+  {
+    first: "Victor",
+    last: "Moreau",
+    company: "Terrafirm",
+    title: "Sales Director",
+    variant: "B",
+    signal: SIGNALS.none,
+    industry: "Manufacturing",
+    size: "1-50",
+    geo: "France",
+  },
 ];
 
-const FIRSTS = ["Julia","Marc","Elena","Pavel","Anya","Thomas","Clara","Diego","Hannah","Owen","Mireia","Lukas","Nora","Felix","Amara","Sven","Iris","Rui","Petra","Adrien","Sanne","Milan","Lea","Karim","Emma","Jonas","Alice","Victor","Chloe","Mateo"];
-const LASTS = ["Vandermeer","Okafor","Reinhart","Novak","Bianchi","Duarte","Halvorsen","Marchetti","Sundqvist","Kowalski","Fontaine","Petersen","Almeida","Weber","Larsen","Baptiste","Rossi","Jensen","Moreau","Castellan","Hoffmann","Ivanov","Serrano","Bergman","Dupont","Klein","Navarro","Sorensen","Laurent","Verhoeven"];
-const COMPANIES = ["Aureon Labs","Northgate Retail","Veridian Health","Lumeneo","Stackforge","Calibra Works","Orbis Freight","Petramind","Havenly Cloud","Zenrick Analytics","Brightpath ERP","Solvexa","Marlowe Group","Tenzing Data","Fjordline Tech","Cyrus Payments","Verdana Energy","Onyxa Media","Pluralink","Keystone Robotics","Astridge Bank","Melvora","Quintal Systems","Ridgeway Logistics","Sablon Studio","Terrafirm","Uplandia","Vertexo","Winterbourne","Yavena"];
-const TITLES = ["VP Sales","Sales Director","Head of Growth","Chief Revenue Officer","Head of Enablement","Revenue Enablement Manager","Sales Operations Manager","Sales Enablement Lead","VP Revenue","Head of Sales"];
-const INDUSTRIES = ["B2B SaaS","Financial Services","Marketing","Manufacturing","Healthcare","IT Services"];
-const SIZES: ProspectContext["companySizeBand"][] = ["1-50","51-200","201-500","501-1000","1000+"];
-const GEOS = ["France","Germany","United Kingdom","Netherlands","Spain","Sweden","United States"];
-const SIGNAL_POOL = [SIGNALS.hiring6, SIGNALS.hiring3, SIGNALS.cro, SIGNALS.leader, SIGNALS.funding, SIGNALS.tech, SIGNALS.posts, SIGNALS.none, SIGNALS.none, SIGNALS.hiring7];
-const TECHS = [["Salesforce","Gong"],["HubSpot","Outreach"],["Pipedrive"],["Salesforce","Clari","Chorus"],["Dynamics 365"]];
+const FIRSTS = [
+  "Julia",
+  "Marc",
+  "Elena",
+  "Pavel",
+  "Anya",
+  "Thomas",
+  "Clara",
+  "Diego",
+  "Hannah",
+  "Owen",
+  "Mireia",
+  "Lukas",
+  "Nora",
+  "Felix",
+  "Amara",
+  "Sven",
+  "Iris",
+  "Rui",
+  "Petra",
+  "Adrien",
+  "Sanne",
+  "Milan",
+  "Lea",
+  "Karim",
+  "Emma",
+  "Jonas",
+  "Alice",
+  "Victor",
+  "Chloe",
+  "Mateo",
+];
+const LASTS = [
+  "Vandermeer",
+  "Okafor",
+  "Reinhart",
+  "Novak",
+  "Bianchi",
+  "Duarte",
+  "Halvorsen",
+  "Marchetti",
+  "Sundqvist",
+  "Kowalski",
+  "Fontaine",
+  "Petersen",
+  "Almeida",
+  "Weber",
+  "Larsen",
+  "Baptiste",
+  "Rossi",
+  "Jensen",
+  "Moreau",
+  "Castellan",
+  "Hoffmann",
+  "Ivanov",
+  "Serrano",
+  "Bergman",
+  "Dupont",
+  "Klein",
+  "Navarro",
+  "Sorensen",
+  "Laurent",
+  "Verhoeven",
+];
+const COMPANIES = [
+  "Aureon Labs",
+  "Northgate Retail",
+  "Veridian Health",
+  "Lumeneo",
+  "Stackforge",
+  "Calibra Works",
+  "Orbis Freight",
+  "Petramind",
+  "Havenly Cloud",
+  "Zenrick Analytics",
+  "Brightpath ERP",
+  "Solvexa",
+  "Marlowe Group",
+  "Tenzing Data",
+  "Fjordline Tech",
+  "Cyrus Payments",
+  "Verdana Energy",
+  "Onyxa Media",
+  "Pluralink",
+  "Keystone Robotics",
+  "Astridge Bank",
+  "Melvora",
+  "Quintal Systems",
+  "Ridgeway Logistics",
+  "Sablon Studio",
+  "Terrafirm",
+  "Uplandia",
+  "Vertexo",
+  "Winterbourne",
+  "Yavena",
+];
+const TITLES = [
+  "VP Sales",
+  "Sales Director",
+  "Head of Growth",
+  "Chief Revenue Officer",
+  "Head of Enablement",
+  "Revenue Enablement Manager",
+  "Sales Operations Manager",
+  "Sales Enablement Lead",
+  "VP Revenue",
+  "Head of Sales",
+];
+const INDUSTRIES = [
+  "B2B SaaS",
+  "Financial Services",
+  "Marketing",
+  "Manufacturing",
+  "Healthcare",
+  "IT Services",
+];
+const SIZES: ProspectContext["companySizeBand"][] = [
+  "1-50",
+  "51-200",
+  "201-500",
+  "501-1000",
+  "1000+",
+];
+const GEOS = [
+  "France",
+  "Germany",
+  "United Kingdom",
+  "Netherlands",
+  "Spain",
+  "Sweden",
+  "United States",
+];
+const SIGNAL_POOL = [
+  SIGNALS.hiring6,
+  SIGNALS.hiring3,
+  SIGNALS.cro,
+  SIGNALS.leader,
+  SIGNALS.funding,
+  SIGNALS.tech,
+  SIGNALS.posts,
+  SIGNALS.none,
+  SIGNALS.none,
+  SIGNALS.hiring7,
+];
+const TECHS = [
+  ["Salesforce", "Gong"],
+  ["HubSpot", "Outreach"],
+  ["Pipedrive"],
+  ["Salesforce", "Clari", "Chorus"],
+  ["Dynamics 365"],
+];
 
 function buildProspect(s: Seeded, index: number): Prospect {
   const group = personaGroupFor(s.title);
@@ -347,7 +566,7 @@ function buildProspect(s: Seeded, index: number): Prospect {
   };
 }
 
-function generateProspects(total = 120): Prospect[] {
+function generateProspects(total = 12): Prospect[] {
   const list: Prospect[] = FIXED_ROWS.map((row, i) => buildProspect(row, i));
   const rnd = mulberry32(20260807);
   for (let i = FIXED_ROWS.length; i < total; i++) {
@@ -364,7 +583,8 @@ function generateProspects(total = 120): Prospect[] {
     };
     // keep company names unique-ish across pages
     const dupCount = Math.floor(i / COMPANIES.length);
-    if (dupCount > 0) seeded.company = `${seeded.company} ${["Europe", "Group", "International"][dupCount - 1] ?? dupCount}`;
+    if (dupCount > 0)
+      seeded.company = `${seeded.company} ${["Europe", "Group", "International"][dupCount - 1] ?? dupCount}`;
     list.push(buildProspect(seeded, i));
   }
   return list;
@@ -377,34 +597,37 @@ export const prospects: Prospect[] = generateProspects();
 export const simulatedOutcomes: Record<VariantId, CampaignOutcome> = {
   A: {
     variant: "A",
-    sends: 200,
-    actualPositiveRate: 6.4,
-    actualOpportunityRate: 1.8,
-    meetings: 9,
-    opportunities: 4,
+    sends: 18,
+    actualPositiveRate: 16.7,
+    actualOpportunityRate: 5.6,
+    meetings: 2,
+    opportunities: 1,
     closedWon: 1,
-    closedLost: 3,
+    closedLost: 2,
   },
   B: {
     variant: "B",
-    sends: 200,
-    actualPositiveRate: 9.5,
-    actualOpportunityRate: 3.5,
-    meetings: 14,
-    opportunities: 7,
-    closedWon: 2,
-    closedLost: 5,
+    sends: 18,
+    actualPositiveRate: 5.6,
+    actualOpportunityRate: 0,
+    meetings: 1,
+    opportunities: 0,
+    closedWon: 0,
+    closedLost: 3,
   },
 };
 
 /** Per-step demo performance metrics used in the Step details view. */
-export const stepMetrics: Record<string, { sent: number; opened: number; clicked: number; replied: number }> = {
-  A1: { sent: 200, opened: 121, clicked: 34, replied: 21 },
-  A3: { sent: 168, opened: 140, clicked: 12, replied: 17 },
-  A5: { sent: 151, opened: 84, clicked: 19, replied: 9 },
-  B1: { sent: 200, opened: 118, clicked: 29, replied: 26 },
-  B3: { sent: 172, opened: 149, clicked: 15, replied: 22 },
-  B5: { sent: 146, opened: 71, clicked: 11, replied: 6 },
+export const stepMetrics: Record<
+  string,
+  { sent: number; opened: number; clicked: number; replied: number }
+> = {
+  A1: { sent: 6, opened: 4, clicked: 2, replied: 2 },
+  A3: { sent: 6, opened: 0, clicked: 0, replied: 1 },
+  A5: { sent: 6, opened: 3, clicked: 1, replied: 1 },
+  B1: { sent: 6, opened: 3, clicked: 1, replied: 1 },
+  B3: { sent: 6, opened: 0, clicked: 0, replied: 0 },
+  B5: { sent: 6, opened: 2, clicked: 0, replied: 0 },
 };
 
-export const MIN_OUTCOMES_FOR_RECALIBRATION = 120;
+export const MIN_OUTCOMES_FOR_RECALIBRATION = 6;

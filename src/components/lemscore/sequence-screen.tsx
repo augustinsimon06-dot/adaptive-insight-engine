@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Clock, Eye, Mail, Linkedin, PanelRightOpen, Sparkles } from "lucide-react";
+import { Clock, Eye, Mail, Linkedin, PanelRightOpen, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +22,16 @@ function ChannelIcon({ channel }: { channel: OutreachChannel }) {
 
 export function SequenceScreen() {
   const store = useLemScore();
-  const { selectedVariant, selectedStepId, panelOpen, update, steps, setStepContent, prospectsFor, messageScore } = store;
+  const {
+    selectedVariant,
+    selectedStepId,
+    panelOpen,
+    update,
+    steps,
+    setStepContent,
+    prospectsFor,
+    messageScore,
+  } = store;
   const variantSteps = steps(selectedVariant);
   const selected = variantSteps.find((s) => s.id === selectedStepId) ?? variantSteps[0]!;
 
@@ -44,10 +53,15 @@ export function SequenceScreen() {
     timer.current = setTimeout(() => {
       setStepContent(selected.id, patch);
       setAnalyzing(false);
-    }, 1000);
+    }, 500);
   };
 
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   const selectStep = (id: string) => update({ selectedStepId: id });
   const selectVariant = (v: VariantId) => {
@@ -56,9 +70,13 @@ export function SequenceScreen() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-6.5rem)] bg-surface">
+    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden bg-surface">
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-background px-6 py-3">
-        <div className="inline-flex rounded-lg border border-border p-0.5" role="tablist" aria-label="A/B variants">
+        <div
+          className="inline-flex rounded-lg border border-border p-0.5"
+          role="tablist"
+          aria-label="A/B variants"
+        >
           {(["A", "B"] as VariantId[]).map((v) => (
             <button
               key={v}
@@ -67,7 +85,9 @@ export function SequenceScreen() {
               onClick={() => selectVariant(v)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                selectedVariant === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                selectedVariant === v
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               Sequence {v}
@@ -89,20 +109,24 @@ export function SequenceScreen() {
 
       <div
         className={cn(
-          "grid gap-0 xl:grid-cols-[280px_360px_minmax(0,1fr)]",
+          "grid min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[280px_360px_minmax(0,1fr)]",
           !panelOpen && "xl:grid-cols-[280px_minmax(0,1fr)]",
         )}
       >
         {/* Canvas */}
-        <div className="space-y-3 border-r border-border bg-background p-4">
+        <div className="min-h-0 space-y-3 overflow-y-auto border-r border-border bg-background p-4">
           <div className="rounded-xl border border-border bg-card p-3">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Sender &amp; schedule</h2>
+            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Sender &amp; schedule
+            </h2>
             <p className="mt-1.5 text-sm font-medium">{baseCampaign.sender.name}</p>
             <p className="text-xs text-muted-foreground">{baseCampaign.sender.email}</p>
             <p className="mt-2 text-xs text-muted-foreground">{baseCampaign.schedule}</p>
           </div>
 
-          <h2 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Campaign canvas</h2>
+          <h2 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Campaign canvas
+          </h2>
           <ol className="space-y-2">
             {variantSteps.map((s) => (
               <li key={s.id}>
@@ -112,19 +136,25 @@ export function SequenceScreen() {
                   aria-current={s.id === selected.id ? "step" : undefined}
                   className={cn(
                     "w-full rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                    s.id === selected.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40",
+                    s.id === selected.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-card hover:border-primary/40",
                   )}
                 >
                   <div className="flex items-center gap-2">
                     <ChannelIcon channel={s.channel} />
-                    <span className="text-sm font-medium">{s.label.split("·")[1]?.trim() ?? s.label}</span>
+                    <span className="text-sm font-medium">
+                      {s.label.split("·")[1]?.trim() ?? s.label}
+                    </span>
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">{s.timing}</span>
                     {s.hasContent ? (
                       <ScorePill score={messageScore(s.id).score} className="ml-auto" />
                     ) : (
-                      <span className="ml-auto text-[11px] text-muted-foreground">No content · no score</span>
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        No content · no score
+                      </span>
                     )}
                   </div>
                 </button>
@@ -132,6 +162,19 @@ export function SequenceScreen() {
               </li>
             ))}
           </ol>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-dashed"
+            onClick={() =>
+              toast("Add a step", {
+                description:
+                  "The beta keeps the current multichannel workflow fixed for a reliable demo.",
+              })
+            }
+          >
+            <Plus className="h-4 w-4" /> Add a step
+          </Button>
           <p className="text-[11px] text-muted-foreground">
             {prospectsFor(selectedVariant).length} prospects assigned to Sequence {selectedVariant}.
           </p>
@@ -139,33 +182,40 @@ export function SequenceScreen() {
 
         {/* lemScore panel (desktop) */}
         {panelOpen && selected.hasContent && (
-          <div className="hidden xl:block">
-            <ScorePanel step={selected} analyzing={analyzing} onCollapse={() => update({ panelOpen: false })} />
+          <div className="hidden min-h-0 overflow-hidden xl:block">
+            <ScorePanel
+              step={selected}
+              analyzing={analyzing}
+              onCollapse={() => update({ panelOpen: false })}
+            />
           </div>
         )}
         {panelOpen && !selected.hasContent && (
-          <div className="hidden border-l border-r border-border bg-lem-soft/40 p-4 text-xs text-muted-foreground xl:block">
-            This step carries no message content, so it does not receive a lemScore. Select an email, LinkedIn message or
-            script step.
+          <div className="m-3 hidden min-h-0 rounded-2xl border-2 border-primary/60 bg-background p-4 text-xs text-muted-foreground xl:block">
+            This is an action step with no message to evaluate. Select an email, LinkedIn message or
+            script step to see its lemScore.
           </div>
         )}
 
         {/* Editor */}
-        <div className="min-w-0 p-6">
+        <div className="min-h-0 min-w-0 overflow-y-auto p-6">
           <div className="mx-auto max-w-3xl space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold">{selected.label}</h2>
               <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
                 {channelLabel(selected.channel)}
               </span>
-              {selected.hasContent && (
-                <MobilePanelTrigger step={selected} analyzing={analyzing} />
-              )}
+              {selected.hasContent && <MobilePanelTrigger step={selected} analyzing={analyzing} />}
               <Button
                 variant="outline"
                 size="sm"
                 className="ml-auto border-lem/40 text-lem hover:bg-lem-soft"
-                onClick={() => toast("lemlist AI", { description: "The existing lemlist AI writing assistant opens here. lemScore stays diagnostic-only." })}
+                onClick={() =>
+                  toast("lemlist AI", {
+                    description:
+                      "The existing lemlist AI writing assistant opens here. lemScore stays diagnostic-only.",
+                  })
+                }
               >
                 <Sparkles className="h-4 w-4" /> lemlist AI
               </Button>
@@ -203,8 +253,8 @@ export function SequenceScreen() {
                   className="mt-1 font-normal leading-relaxed"
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  This fixed content is sent to every prospect assigned to Sequence {selected.variant}. lemScore only
-                  predicts its fit — it never edits your message.
+                  This fixed content is sent to every prospect assigned to Sequence{" "}
+                  {selected.variant}. lemScore only predicts its fit — it never edits your message.
                 </p>
               </div>
             ) : (
