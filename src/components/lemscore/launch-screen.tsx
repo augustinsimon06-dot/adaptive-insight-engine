@@ -63,6 +63,10 @@ export function LaunchScreen() {
       <div className="flex items-center gap-2 border-b border-border bg-background px-6 py-3">
         <h2 className="text-sm font-semibold">Review &amp; launch</h2>
         <DemoBadge />
+        <span className="text-xs text-muted-foreground">
+          Final send queue · checked prospects will launch; unchecked prospects stay in the
+          campaign.
+        </span>
         <span className="ml-auto inline-flex items-center gap-2 rounded-lg bg-success-soft px-3 py-1.5 text-xs font-semibold text-success">
           All checks complete
         </span>

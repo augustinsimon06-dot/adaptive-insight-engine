@@ -133,19 +133,27 @@ export function WorkflowCanvas({
                       onClick={(event) => event.stopPropagation()}
                     >
                       <span className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                        lemScore
+                        Audience fit
                       </span>
-                      <ScorePill score={result.score} suffix={false} />
+                      <ScorePill score={result.score} validity={result.validity} suffix={false} />
                       <InfoPopover>
                         <div className="space-y-1">
                           <p className="font-semibold text-foreground">
-                            Message fit for Sequence {variant}
+                            Outcome prediction for Sequence {variant}
                           </p>
-                          <p>Strong fit: {result.distribution.strong}% of prospects</p>
-                          <p>Medium fit: {result.distribution.medium}%</p>
-                          <p>Weak fit: {result.distribution.weak}%</p>
-                          <p>Confidence: {result.confidence}</p>
-                          <p>Predicted positive replies: {result.prediction.positiveReplyRate}%</p>
+                          {result.validity !== "valid" ? (
+                            <p>{result.validityReason}</p>
+                          ) : (
+                            <>
+                              <p>Strong fit: {result.distribution.strong}% of prospects</p>
+                              <p>Medium fit: {result.distribution.medium}%</p>
+                              <p>Weak fit: {result.distribution.weak}%</p>
+                              <p>Confidence: {result.confidence}</p>
+                              <p>
+                                Predicted positive replies: {result.prediction.positiveReplyRate}%
+                              </p>
+                            </>
+                          )}
                           <DemoBadge className="mt-1" />
                         </div>
                       </InfoPopover>

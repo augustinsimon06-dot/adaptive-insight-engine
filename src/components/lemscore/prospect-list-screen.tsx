@@ -29,7 +29,7 @@ export function ProspectListScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const rows = useMemo(() => {
-    let list = allProspects.map((p) => ({ p, score: prospectScore(p.id).score }));
+    let list = allProspects.map((p) => ({ p, result: prospectScore(p.id) }));
     if (filters.search.trim()) {
       const q = filters.search.toLowerCase();
       list = list.filter(({ p }) =>
@@ -39,9 +39,11 @@ export function ProspectListScreen() {
     if (filters.variant !== "all") list = list.filter(({ p }) => p.variant === filters.variant);
     if (filters.persona !== "all") list = list.filter(({ p }) => p.jobTitle === filters.persona);
     if (filters.band !== "all")
-      list = list.filter(({ score }) => scoreBand(score) === filters.band);
+      list = list.filter(({ result }) => scoreBand(result.score) === filters.band);
     if (sortDir)
-      list = [...list].sort((a, b) => (sortDir === "asc" ? a.score - b.score : b.score - a.score));
+      list = [...list].sort((a, b) =>
+        sortDir === "asc" ? a.result.score - b.result.score : b.result.score - a.result.score,
+      );
     return list;
   }, [filters, sortDir, prospectScore]);
 
@@ -71,8 +73,9 @@ export function ProspectListScreen() {
         <h2 className="text-base font-semibold">Prospect list</h2>
         <DemoBadge />
         <span className="text-xs text-muted-foreground">
-          Each prospect receives exactly one variant. The score evaluates the complete fixed
-          sequence assigned to them.
+          Campaign members · lemScore predicts the complete fixed sequence assigned to each
+          prospect. Row selection is for campaign management; final send selection happens in
+          Launch.
         </span>
         <InfoPopover label="These checkboxes only select table rows for manual bulk actions. An unchecked prospect still belongs to the campaign. Launch has a separate selection for choosing who will actually be sent." />
       </div>
@@ -164,7 +167,7 @@ export function ProspectListScreen() {
             </tr>
           </thead>
           <tbody>
-            {current.map(({ p, score }) => (
+            {current.map(({ p, result }) => (
               <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/50">
                 <td className="px-3 py-2">
                   <Checkbox
@@ -183,9 +186,9 @@ export function ProspectListScreen() {
                     type="button"
                     onClick={() => setOpenId(p.id)}
                     className="rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                    aria-label={`Explain lemScore ${score} for ${p.name}`}
+                    aria-label={`Explain lemScore ${result.score} for ${p.name}`}
                   >
-                    <ScorePill score={score} suffix={false} />
+                    <ScorePill score={result.score} validity={result.validity} suffix={false} />
                   </button>
                 </td>
                 <td className="px-3 py-2">{p.variant}</td>
@@ -277,16 +280,19 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            {p.name} <ScorePill score={result.score} />
+            {p.name} <ScorePill score={result.score} validity={result.validity} />
           </SheetTitle>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-8 text-xs">
           <p className="text-sm">
             <span className="font-semibold">
-              {result.score}/100 — {bandWord(result.score)}
+              {result.score}/100 —{" "}
+              {result.validity === "valid" ? bandWord(result.score) : "Prediction paused"}
             </span>
             <br />
-            <span className="text-muted-foreground">{summary}</span>
+            <span className="text-muted-foreground">
+              {result.validity === "valid" ? summary : result.validityReason}
+            </span>
           </p>
 
           <div className="rounded-lg border border-primary/30 bg-primary/[0.035] p-3">

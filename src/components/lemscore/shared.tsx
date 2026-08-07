@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { scoreBand } from "@/lib/lemscore/scoring";
+import type { ScoreValidity } from "@/lib/lemscore/types";
 
 export const BETA_EXPLANATION =
   "This beta uses deterministic demo benchmarks and outcomes. Production lemScore would use anonymized lemlist patterns, workspace history, CRM outcomes and prospect context.";
@@ -80,29 +81,34 @@ export function bandWord(score: number) {
 
 export function ScorePill({
   score,
+  validity = "valid",
   size = "sm",
   suffix = true,
   className,
 }: {
   score: number;
+  validity?: ScoreValidity;
   size?: "sm" | "lg";
   suffix?: boolean;
   className?: string;
 }) {
+  const unavailable = validity !== "valid";
+  const statusLabel =
+    validity === "audience_unavailable" ? "Add prospects" : "Insufficient content";
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full border font-semibold tabular-nums",
-        bandClasses(score),
+        unavailable ? "border-warning/40 bg-warning-soft text-warning" : bandClasses(score),
         size === "lg" ? "px-2.5 py-1 text-sm" : "px-2 py-0.5 text-xs",
         className,
       )}
     >
       {score}
       {suffix ? "/100" : ""}
-      <span className="sr-only"> — {bandWord(score)}</span>
+      <span className="sr-only"> — {unavailable ? statusLabel : bandWord(score)}</span>
       <span aria-hidden="true" className="text-[10px] font-medium opacity-80">
-        {bandWord(score)}
+        {unavailable ? statusLabel : bandWord(score)}
       </span>
     </span>
   );

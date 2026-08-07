@@ -233,12 +233,12 @@ export function SequenceScreen() {
 
 function MobilePanelTrigger({ step, analyzing }: { step: SequenceStep; analyzing: boolean }) {
   const { messageScore } = useLemScore();
-  const score = useMemo(() => messageScore(step.id).score, [messageScore, step.id]);
+  const result = useMemo(() => messageScore(step.id), [messageScore, step.id]);
   return (
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="xl:hidden">
-          lemScore <ScorePill score={score} />
+          Audience prediction <ScorePill score={result.score} validity={result.validity} />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-md">

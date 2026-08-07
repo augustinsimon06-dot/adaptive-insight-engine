@@ -39,7 +39,7 @@ export function PerformanceScreen() {
     steps,
     messageScore,
     trendFor,
-    variantScore,
+    variantResult,
     outcome,
     activeProspects,
     launchedProspects,
@@ -87,13 +87,17 @@ export function PerformanceScreen() {
   const reached = Math.max(0, launchedProspects.length - 1);
 
   const variantDetail = (variant: VariantId) => {
-    const current = variantScore(variant);
+    const currentPrediction = variantResult(variant);
+    const current = currentPrediction.score;
     const trend = trendFor(`variant:${variant}`, current, variant);
     const result = outcome(variant)!;
     return {
       trend: trend.trend,
       launchScore: trend.snapshot?.score ?? null,
       currentScore: current,
+      currentValidity: currentPrediction.validity,
+      currentPredictedPositive: currentPrediction.prediction.positiveReplyRate,
+      currentPredictedOpportunity: currentPrediction.prediction.opportunityRate,
       predictedPositive: trend.snapshot?.predictedPositiveRate ?? 0,
       actualPositive: result.actualPositiveRate,
       predictedOpportunity: trend.snapshot?.predictedOpportunityRate ?? 0,
@@ -201,8 +205,8 @@ export function PerformanceScreen() {
                   <div>
                     <h2 className="text-base font-semibold text-primary">lemScore tracking</h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Current scores follow your latest edits. Outcome signals remain tied to the
-                      version frozen at launch.
+                      Launch prediction stays frozen. Current prediction follows your latest message
+                      and audience; actual outcomes validate the original forecast.
                     </p>
                   </div>
                   <DemoBadge className="ml-auto" />
@@ -221,11 +225,29 @@ export function PerformanceScreen() {
                             {detail.sends} sends analyzed
                           </span>
                         </div>
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <ScorePill score={detail.currentScore} />
-                          <span className="text-xs text-muted-foreground">
-                            Current whole-sequence score
-                          </span>
+                        <div className="mt-3 rounded-lg border border-primary/30 bg-background p-3">
+                          <p className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+                            Current prediction
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                            <ScorePill
+                              score={detail.currentScore}
+                              validity={detail.currentValidity}
+                            />
+                            <span className="text-[11px] text-muted-foreground">
+                              Latest message × current audience
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                            <MiniMetric
+                              label="Estimated positive replies"
+                              value={`${detail.currentPredictedPositive}%`}
+                            />
+                            <MiniMetric
+                              label="Estimated opportunities"
+                              value={`${detail.currentPredictedOpportunity}%`}
+                            />
+                          </div>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
                           {steps(variant)
@@ -239,28 +261,40 @@ export function PerformanceScreen() {
                               </span>
                             ))}
                         </div>
-                        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-2.5 text-xs">
-                          <span className="text-muted-foreground">Score frozen at launch</span>
-                          <strong className="tabular-nums">{detail.launchScore ?? "—"}/100</strong>
-                          <OutcomeSignal detail={detail} />
+                        <div className="mt-3 rounded-lg border border-border bg-background p-3">
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="font-semibold">Launch prediction</span>
+                            <strong className="tabular-nums">
+                              {detail.launchScore ?? "—"}/100
+                            </strong>
+                            <span className="text-muted-foreground">Frozen when sent</span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                            <MiniMetric
+                              label="Estimated positive replies"
+                              value={`${detail.predictedPositive}%`}
+                            />
+                            <MiniMetric
+                              label="Estimated opportunities"
+                              value={`${detail.predictedOpportunity}%`}
+                            />
+                          </div>
                         </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                          <MiniMetric
-                            label="Predicted positive replies"
-                            value={`${detail.predictedPositive}%`}
-                          />
-                          <MiniMetric
-                            label="Actual positive replies"
-                            value={`${detail.actualPositive}%`}
-                          />
-                          <MiniMetric
-                            label="Predicted opportunities"
-                            value={`${detail.predictedOpportunity}%`}
-                          />
-                          <MiniMetric
-                            label="Actual opportunities"
-                            value={`${detail.actualOpportunity}%`}
-                          />
+                        <div className="mt-3 rounded-lg border border-border bg-background p-3">
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="font-semibold">Actual outcome</span>
+                            <OutcomeSignal detail={detail} />
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                            <MiniMetric
+                              label="Positive replies"
+                              value={`${detail.actualPositive}%`}
+                            />
+                            <MiniMetric
+                              label="Qualified opportunities"
+                              value={`${detail.actualOpportunity}%`}
+                            />
+                          </div>
                         </div>
                       </div>
                     );
@@ -324,7 +358,8 @@ export function PerformanceScreen() {
                     (step) => step.variant === variant && step.position === selectedStep.position,
                   );
                   if (!twin) return null;
-                  const current = messageScore(twin.id).score;
+                  const currentResult = messageScore(twin.id);
+                  const current = currentResult.score;
                   const trend = trendFor(twin.id, current, variant);
                   const result = outcome(variant)!;
                   const detail = {
@@ -346,13 +381,13 @@ export function PerformanceScreen() {
                         {channelLabel(twin.channel)} · position {twin.position}
                       </p>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                        <ScorePill score={current} />
+                        <ScorePill score={current} validity={currentResult.validity} />
                         <span className="text-xs text-muted-foreground">
-                          Current live message score
+                          Current message × audience prediction
                         </span>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs">
-                        <span className="text-muted-foreground">Score at launch</span>
+                        <span className="text-muted-foreground">Launch prediction</span>
                         <strong>{trend.snapshot?.score ?? "—"}/100</strong>
                         <OutcomeSignal detail={detail} />
                       </div>

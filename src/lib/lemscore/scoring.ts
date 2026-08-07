@@ -15,6 +15,11 @@ import type {
   WorkspaceHistory,
 } from "./types";
 
+type ContentValidation = {
+  valid: boolean;
+  reason?: string;
+};
+
 const OUTCOME_WORDS = [
   "ramp",
   "quota",
@@ -112,6 +117,50 @@ export function extractMessageFeatures(subject: string | undefined, body: string
   };
 }
 
+/**
+ * A commercial prediction is only meaningful once there is an actual message to evaluate.
+ * Merge variables do not count as copy, and obvious keyboard noise must never inherit the
+ * neutral 50-point starting score.
+ */
+export function validateMessageContent(step: SequenceStep): ContentValidation {
+  const clean = (value: string | undefined) =>
+    (value ?? "")
+      .replace(/{{[^}]+}}/g, " ")
+      .replace(/https?:\/\/\S+/gi, " link ")
+      .replace(/[^\p{L}\p{N}'’-]+/gu, " ")
+      .trim();
+  const body = clean(step.body);
+  const subject = clean(step.subject);
+  const tokens = body.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) ?? [];
+  const letterTokens = tokens.filter((token) => /\p{L}/u.test(token));
+  const letters = letterTokens.join("").replace(/[^\p{L}]/gu, "");
+  const vowelCount = (letters.match(/[aeiouyàâäéèêëïîôöùûüÿœ]/gi) ?? []).length;
+  const vowelRatio = letters.length ? vowelCount / letters.length : 0;
+  const suspiciousLongToken = letterTokens.some((token) => {
+    const normalized = token.replace(/[^\p{L}]/gu, "");
+    const vowels = (normalized.match(/[aeiouyàâäéèêëïîôöùûüÿœ]/gi) ?? []).length;
+    return normalized.length >= 9 && vowels / normalized.length < 0.18;
+  });
+
+  if (!body) return { valid: false, reason: "Add a message before requesting a prediction." };
+  if (step.channel === "email" && !subject) {
+    return { valid: false, reason: "Add an email subject before requesting a prediction." };
+  }
+  if (letterTokens.length < 3) {
+    return {
+      valid: false,
+      reason: "Add at least one complete sentence so the outcome model has enough signal.",
+    };
+  }
+  if (letters.length >= 9 && (vowelRatio < 0.14 || suspiciousLongToken)) {
+    return {
+      valid: false,
+      reason: "The current text does not contain enough meaningful language to predict an outcome.",
+    };
+  }
+  return { valid: true };
+}
+
 export function calculateConfidence(sampleSize: number, workspace: WorkspaceHistory): Confidence {
   if (workspace.maturity === "cold_start") return sampleSize > 8000 ? "Medium" : "Low";
   if (sampleSize >= 8000 && workspace.opportunities >= 40) return "High";
@@ -164,6 +213,25 @@ export function scoreMessageForProspect(step: SequenceStep, prospect: Prospect):
     workspaceHistory.maturity === "calibrated"
       ? "lemlist benchmark + workspace history"
       : "lemlist benchmark (anonymized patterns)";
+  const validation = validateMessageContent(step);
+  if (!validation.valid) {
+    return {
+      score: 0,
+      band: "weak",
+      validity: "insufficient_content",
+      validityReason: validation.reason,
+      audienceSize: 1,
+      prediction: {
+        positiveReplyRate: 0,
+        opportunityRate: 0,
+        workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
+      },
+      confidence: "Low",
+      comparableMessages: 0,
+      factors: [],
+      calibrationSource: "Prediction paused until the message contains enough usable content",
+    };
+  }
   const factors: ScoreFactor[] = [];
   const add = (
     label: string,
@@ -308,6 +376,8 @@ export function scoreMessageForProspect(step: SequenceStep, prospect: Prospect):
   return {
     score,
     band: scoreBand(score),
+    validity: "valid",
+    audienceSize: 1,
     prediction,
     confidence,
     comparableMessages: sample,
@@ -336,8 +406,31 @@ export function aggregateMessageScore(
 } {
   const results = variantProspects.map((p) => scoreMessageForProspect(step, p));
   if (results.length === 0) {
-    const empty = scoreMessageForProspect(step, FALLBACK_PROSPECT);
-    return { ...empty, distribution: { strong: 0, medium: 0, weak: 0 } };
+    return {
+      score: 0,
+      band: "weak",
+      validity: "audience_unavailable",
+      validityReason: "Add prospects to this campaign to calculate an audience prediction.",
+      audienceSize: 0,
+      prediction: {
+        positiveReplyRate: 0,
+        opportunityRate: 0,
+        workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
+      },
+      confidence: "Low",
+      comparableMessages: 0,
+      factors: [],
+      calibrationSource: "Audience prediction unavailable",
+      distribution: { strong: 0, medium: 0, weak: 0 },
+    };
+  }
+  const invalid = results.find((result) => result.validity !== "valid");
+  if (invalid) {
+    return {
+      ...invalid,
+      audienceSize: results.length,
+      distribution: { strong: 0, medium: 0, weak: 0 },
+    };
   }
   const avg = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
   const reference = results.reduce(
@@ -378,6 +471,8 @@ export function aggregateMessageScore(
     ...reference,
     score: avg,
     band: scoreBand(avg),
+    validity: "valid",
+    audienceSize: total,
     factors,
     prediction: {
       positiveReplyRate: round1(
@@ -403,7 +498,24 @@ export function aggregateProspectSequenceScore(
 ): ScoreResult {
   const content = steps.filter((s) => hasContent(s.channel) && s.hasContent);
   const results = content.map((s) => scoreMessageForProspect(s, prospect));
-  if (!results.length) return scoreMessageForProspect(steps[0]!, prospect);
+  if (!results.length) {
+    return {
+      score: 0,
+      band: "weak",
+      validity: "insufficient_content",
+      validityReason: "This sequence has no message-bearing step to evaluate.",
+      audienceSize: 1,
+      prediction: {
+        positiveReplyRate: 0,
+        opportunityRate: 0,
+        workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
+      },
+      confidence: "Low",
+      comparableMessages: 0,
+      factors: [],
+      calibrationSource: "Prediction unavailable",
+    };
+  }
   // first touch weighs more than follow-ups
   const weights = content.map((s) => (s.position <= 1 ? 2 : 1));
   const weightSum = weights.reduce((a, b) => a + b, 0);
@@ -421,6 +533,13 @@ export function aggregateProspectSequenceScore(
   return {
     score,
     band: scoreBand(score),
+    validity: results.some((result) => result.validity === "valid")
+      ? "valid"
+      : "insufficient_content",
+    validityReason: results.every((result) => result.validity !== "valid")
+      ? "Every message-bearing step needs usable content before launch."
+      : undefined,
+    audienceSize: 1,
     prediction: {
       positiveReplyRate: round1(
         results.reduce((s, r) => s + r.prediction.positiveReplyRate, 0) / results.length,
@@ -436,6 +555,85 @@ export function aggregateProspectSequenceScore(
     ),
     factors,
     calibrationSource: first.calibrationSource,
+  };
+}
+
+/**
+ * Whole-sequence audience prediction. This is the single source used by Sequence summaries,
+ * the launch snapshot and Performance. It is the average of the personalized predictions for
+ * every prospect assigned to the variant — never an unrelated generic writing score.
+ */
+export function aggregateVariantSequenceScore(
+  steps: SequenceStep[],
+  variantProspects: Prospect[],
+): ScoreResult & { distribution: { strong: number; medium: number; weak: number } } {
+  if (!variantProspects.length) {
+    return {
+      score: 0,
+      band: "weak",
+      validity: "audience_unavailable",
+      validityReason: "Add prospects to this campaign to calculate an audience prediction.",
+      audienceSize: 0,
+      prediction: {
+        positiveReplyRate: 0,
+        opportunityRate: 0,
+        workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
+      },
+      confidence: "Low",
+      comparableMessages: 0,
+      factors: [],
+      calibrationSource: "Audience prediction unavailable",
+      distribution: { strong: 0, medium: 0, weak: 0 },
+    };
+  }
+
+  const results = variantProspects.map((prospect) =>
+    aggregateProspectSequenceScore(steps, prospect),
+  );
+  const validResults = results.filter((result) => result.validity === "valid");
+  if (!validResults.length) {
+    return {
+      ...results[0]!,
+      score: 0,
+      band: "weak",
+      audienceSize: results.length,
+      distribution: { strong: 0, medium: 0, weak: 0 },
+    };
+  }
+
+  const average = (select: (result: ScoreResult) => number) =>
+    validResults.reduce((sum, result) => sum + select(result), 0) / validResults.length;
+  const score = Math.round(average((result) => result.score));
+  const counts = { strong: 0, medium: 0, weak: 0 };
+  results.forEach((result) => {
+    counts[result.band] += 1;
+  });
+  const representative = validResults.reduce((best, result) =>
+    Math.abs(result.score - score) < Math.abs(best.score - score) ? result : best,
+  );
+  const total = results.length;
+
+  return {
+    ...representative,
+    score,
+    band: scoreBand(score),
+    validity: "valid",
+    validityReason:
+      validResults.length < results.length
+        ? `${results.length - validResults.length} prospect prediction(s) are waiting for complete message content.`
+        : undefined,
+    audienceSize: total,
+    prediction: {
+      positiveReplyRate: round1(average((result) => result.prediction.positiveReplyRate)),
+      opportunityRate: round2(average((result) => result.prediction.opportunityRate)),
+      workspaceBaselineRate: workspaceHistory.baselinePositiveRate,
+    },
+    comparableMessages: Math.round(average((result) => result.comparableMessages)),
+    distribution: {
+      strong: Math.round((counts.strong / total) * 100),
+      medium: Math.round((counts.medium / total) * 100),
+      weak: Math.round((counts.weak / total) * 100),
+    },
   };
 }
 
@@ -469,26 +667,3 @@ export function recalibrateAfterOutcomes(
         : "Results match the initial prediction.";
   return { score, trend, explanation, recalibrated: true };
 }
-
-const FALLBACK_PROSPECT: Prospect = {
-  id: "fallback",
-  firstName: "Alex",
-  lastName: "Doe",
-  name: "Alex Doe",
-  company: "Acme",
-  jobTitle: "VP Sales",
-  email: "alex@acme.com",
-  variant: "A",
-  status: "Not started",
-  context: {
-    persona: "VP Sales",
-    personaGroup: "revenue_leader",
-    industry: "B2B SaaS",
-    companySizeBand: "201-500",
-    geography: "France",
-    signal: { type: "none", label: "No strong signal", strength: "none" },
-    growth: "Headcount stable",
-    technologies: [],
-    publicActivity: "None",
-  },
-};

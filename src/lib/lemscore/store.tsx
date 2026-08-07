@@ -16,11 +16,12 @@ import {
 import {
   aggregateMessageScore,
   aggregateProspectSequenceScore,
+  aggregateVariantSequenceScore,
   recalibrateAfterOutcomes,
 } from "./scoring";
 import type { CampaignOutcome, ScoreSnapshot, SequenceStep, VariantId } from "./types";
 
-const STORAGE_KEY = "lemscore.beta.v2";
+const STORAGE_KEY = "lemscore.beta.v3";
 
 type Filters = {
   search: string;
@@ -103,6 +104,7 @@ type Store = Persisted & {
   launchedProspectsFor: (variant: VariantId) => typeof allProspects;
   messageScore: (stepId: string) => ReturnType<typeof aggregateMessageScore>;
   prospectScore: (prospectId: string) => ReturnType<typeof aggregateProspectSequenceScore>;
+  variantResult: (variant: VariantId) => ReturnType<typeof aggregateVariantSequenceScore>;
   variantScore: (variant: VariantId) => number;
   outcome: (variant: VariantId) => CampaignOutcome | null;
   trendFor: (
@@ -207,15 +209,17 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
     [steps],
   );
 
-  const variantScore = useCallback(
+  const variantResult = useCallback(
     (variant: VariantId) => {
       const list = state.launched ? launchedProspectsFor(variant) : prospectsFor(variant);
-      if (!list.length) return 0;
-      const seq = steps(variant);
-      const total = list.reduce((sum, p) => sum + aggregateProspectSequenceScore(seq, p).score, 0);
-      return Math.round(total / list.length);
+      return aggregateVariantSequenceScore(steps(variant), list);
     },
     [state.launched, prospectsFor, launchedProspectsFor, steps],
+  );
+
+  const variantScore = useCallback(
+    (variant: VariantId) => variantResult(variant).score,
+    [variantResult],
   );
 
   const outcome = useCallback(
@@ -270,21 +274,12 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
               capturedAt,
             };
           });
-        const avg = list.length
-          ? Math.round(
-              list.reduce(
-                (sum, p) => sum + aggregateProspectSequenceScore(variantSteps, p).score,
-                0,
-              ) / list.length,
-            )
-          : 0;
-        const firstStep = variantSteps.find((s) => s.hasContent)!;
-        const firstScore = aggregateMessageScore(firstStep, list);
+        const sequenceResult = aggregateVariantSequenceScore(variantSteps, list);
         snapshots[`variant:${variant}`] = {
-          score: avg,
-          predictedPositiveRate: firstScore.prediction.positiveReplyRate,
-          predictedOpportunityRate: firstScore.prediction.opportunityRate,
-          confidence: firstScore.confidence,
+          score: sequenceResult.score,
+          predictedPositiveRate: sequenceResult.prediction.positiveReplyRate,
+          predictedOpportunityRate: sequenceResult.prediction.opportunityRate,
+          confidence: sequenceResult.confidence,
           capturedAt,
         };
       });
@@ -308,6 +303,7 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       reset: () => {
         try {
           window.localStorage.removeItem(STORAGE_KEY);
+          window.localStorage.removeItem("lemscore.beta.v2");
           window.localStorage.removeItem("lemscore.beta.v1");
         } catch {
           /* localStorage may be unavailable in private browsing */
@@ -323,6 +319,7 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       launchedProspectsFor,
       messageScore,
       prospectScore,
+      variantResult,
       variantScore,
       outcome,
       trendFor,
@@ -341,6 +338,7 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       launchedProspectsFor,
       messageScore,
       prospectScore,
+      variantResult,
       variantScore,
       outcome,
       trendFor,

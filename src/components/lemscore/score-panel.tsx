@@ -1,5 +1,6 @@
-import { ChevronDown, Loader2, PanelRightClose, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, Loader2, PanelRightClose, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { channelLabel } from "@/lib/lemscore/benchmarks";
 import { bandLabel } from "@/lib/lemscore/scoring";
 import { useLemScore } from "@/lib/lemscore/store";
@@ -19,15 +20,12 @@ export function ScorePanel({
   const { messageScore, prospectsFor } = useLemScore();
   const result = messageScore(step.id);
   const audience = prospectsFor(step.variant);
-  const positive = [...result.factors]
-    .filter((factor) => factor.contribution > 0)
-    .sort((a, b) => b.contribution - a.contribution)
-    .slice(0, 3);
   const negative = [...result.factors]
     .filter((factor) => factor.contribution < 0)
     .sort((a, b) => a.contribution - b.contribution)
     .slice(0, 3);
-  const priority = negative[0];
+  const priority = negative[0] ?? result.factors[0];
+  const unavailable = result.validity !== "valid";
 
   return (
     <aside
@@ -37,13 +35,16 @@ export function ScorePanel({
       <div className="flex items-start gap-2">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-primary uppercase">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> lemScore
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Audience prediction
           </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Sequence {step.variant} · {channelLabel(step.channel)}
           </p>
         </div>
-        <InfoPopover label="A prediction of how well this fixed message fits the prospects assigned to this variant. It never rewrites the message or changes the A/B split." />
+        <InfoPopover
+          className="w-96"
+          label="This is a commercial outcome prediction, not a generic copywriting grade. It crosses the exact fixed message with each assigned prospect, comparable lemlist patterns, workspace history and CRM won/lost outcomes. It never rewrites the message or changes the A/B split."
+        />
         {onCollapse && (
           <Button
             variant="ghost"
@@ -59,28 +60,41 @@ export function ScorePanel({
 
       <section className="rounded-xl border-2 border-primary/50 bg-primary/[0.025] p-4">
         <p className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-          Live message score
+          Live outcome prediction
         </p>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-semibold tabular-nums">{result.score}</span>
           <span className="text-sm text-muted-foreground">/100</span>
-          <InfoPopover label="This is a prediction, not a guaranteed outcome. It combines message characteristics, assigned audience context, channel-specific patterns and demo workspace history." />
+          <InfoPopover label="This is a prediction, not a guaranteed result. The number is the mean of the personalized predictions for every prospect currently assigned to this variant." />
           {analyzing && (
             <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Updating…
             </span>
           )}
         </div>
-        <p
-          className={cn(
-            "mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
-            bandClasses(result.score),
-          )}
-        >
-          {bandLabel(result.score)}
-        </p>
+        {unavailable ? (
+          <div className="mt-2 rounded-lg border border-warning/35 bg-warning-soft p-2.5 text-xs text-warning">
+            <strong>{result.score}/100 · Prediction paused</strong>
+            <p className="mt-1 leading-relaxed text-foreground">{result.validityReason}</p>
+          </div>
+        ) : (
+          <>
+            <p
+              className={cn(
+                "mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
+                bandClasses(result.score),
+              )}
+            >
+              {bandLabel(result.score)}
+            </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              Mean of {result.audienceSize} personalized message × prospect prediction
+              {result.audienceSize === 1 ? "" : "s"}.
+            </p>
+          </>
+        )}
 
-        <dl className="mt-3 space-y-1.5 text-xs">
+        <dl className={cn("mt-3 space-y-1.5 text-xs", unavailable && "opacity-55")}>
           <Row
             label="Predicted positive replies"
             value={`${result.prediction.positiveReplyRate}%`}
@@ -89,12 +103,50 @@ export function ScorePanel({
           <Row label="Workspace baseline" value={`${result.prediction.workspaceBaselineRate}%`} />
           <Row label="Confidence" value={result.confidence} />
         </dl>
-        <div className="mt-3 grid grid-cols-3 gap-1 text-center text-[10px]">
+        <div
+          className={cn(
+            "mt-3 grid grid-cols-3 gap-1 text-center text-[10px]",
+            unavailable && "opacity-55",
+          )}
+        >
           <FitCell label="Strong" value={result.distribution.strong} className="text-success" />
           <FitCell label="Medium" value={result.distribution.medium} className="text-warning" />
           <FitCell label="Weak" value={result.distribution.weak} className="text-destructive" />
         </div>
       </section>
+
+      {priority && !unavailable && (
+        <HoverCard openDelay={120} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-xl border border-warning/35 bg-warning-soft px-3 py-2.5 text-left text-xs transition-colors hover:border-warning/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-foreground">Priority insight</span>
+                <span className="block truncate text-muted-foreground">
+                  {priority.label} · hover for the outcome-linked recommendation
+                </span>
+              </span>
+              <Sparkles className="h-4 w-4 shrink-0 text-lem" aria-hidden="true" />
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent align="start" side="right" className="w-96 text-xs leading-relaxed">
+            <p className="font-semibold text-foreground">One evidence-backed improvement</p>
+            <p className="mt-1 text-muted-foreground">
+              Your message is usable, but comparable message × prospect pairs produced better
+              commercial outcomes when this element was closer to the winning pattern:
+            </p>
+            <p className="mt-2 font-medium text-foreground">
+              {priority.label}: {priority.benchmark}
+            </p>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Diagnostic only. Use lemlist AI if you want help rewriting the copy.
+            </p>
+          </HoverCardContent>
+        </HoverCard>
+      )}
 
       <section className="rounded-xl border border-border bg-card p-4">
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -108,91 +160,31 @@ export function ScorePanel({
         </dl>
       </section>
 
-      <DiagnosticList
-        title="What helps the score"
-        factors={positive}
-        empty="No strong positive signal detected."
-        positive
-      />
-      <DiagnosticList
-        title="What hurts the score"
-        factors={negative}
-        empty="No major risk detected."
-      />
-
-      <section className="rounded-xl border border-primary/30 bg-primary/[0.035] p-4">
-        <h3 className="text-xs font-semibold tracking-wide text-primary uppercase">
-          Best next improvement
-        </h3>
-        <p className="mt-2 text-xs leading-relaxed">
-          {priority
-            ? `${priority.label}: ${priority.benchmark}`
-            : "Keep this version and validate the prediction with the A/B test."}
-        </p>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Diagnostic only — no change is applied automatically.
-        </p>
-      </section>
-
-      <details className="group rounded-xl border border-border bg-card p-4">
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Advanced evidence
-          <ChevronDown className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="mt-3 rounded-lg bg-surface p-3 text-[11px] text-muted-foreground">
-          Compared with {result.comparableMessages.toLocaleString()} channel- and persona-matched
-          demo messages. {result.calibrationSource}. Confidence: {result.confidence}.
-        </div>
-        <ul className="mt-3 space-y-2.5">
-          {result.factors.map((factor) => (
-            <FactorRow key={factor.label} factor={factor} />
-          ))}
-        </ul>
-      </details>
+      {!unavailable && (
+        <details className="group rounded-xl border border-border bg-card p-4">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Why this prediction
+            <ChevronDown className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-3 rounded-lg bg-surface p-3 text-[11px] text-muted-foreground">
+            Compared with {result.comparableMessages.toLocaleString()} channel- and persona-matched
+            demo messages. {result.calibrationSource}. Confidence: {result.confidence}.
+          </div>
+          <ul className="mt-3 space-y-2.5">
+            {result.factors.map((factor) => (
+              <FactorRow key={factor.label} factor={factor} />
+            ))}
+          </ul>
+        </details>
+      )}
 
       <p className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-[11px] leading-relaxed text-muted-foreground">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-        One fixed message is scored across the assigned audience. Actual campaign results remain the
-        final validation.
+        One fixed message is crossed with every assigned prospect. Launch freezes this prediction;
+        actual positive replies, opportunities and won/lost outcomes remain the final validation.
       </p>
       <DemoBadge className="w-fit" />
     </aside>
-  );
-}
-
-function DiagnosticList({
-  title,
-  factors,
-  empty,
-  positive = false,
-}: {
-  title: string;
-  factors: ScoreFactor[];
-  empty: string;
-  positive?: boolean;
-}) {
-  return (
-    <section className="rounded-xl border border-border bg-card p-4">
-      <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {title}
-      </h3>
-      {factors.length ? (
-        <ul className="mt-2 space-y-2">
-          {factors.map((factor) => (
-            <li key={factor.label} className="flex gap-2 text-xs leading-relaxed">
-              <span className={positive ? "text-success" : "text-destructive"}>
-                {positive ? "+" : "−"}
-              </span>
-              <span>
-                <strong className="font-medium">{factor.label}:</strong> {factor.observed}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-2 text-xs text-muted-foreground">{empty}</p>
-      )}
-    </section>
   );
 }
 
@@ -245,5 +237,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function ScorePillForStep({ stepId }: { stepId: string }) {
   const { messageScore } = useLemScore();
-  return <ScorePill score={messageScore(stepId).score} />;
+  const result = messageScore(stepId);
+  return <ScorePill score={result.score} validity={result.validity} />;
 }

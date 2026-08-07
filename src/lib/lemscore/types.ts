@@ -17,6 +17,8 @@ export type PersonaGroup = "revenue_leader" | "enablement";
 
 export type ScoreBand = "strong" | "medium" | "weak";
 
+export type ScoreValidity = "valid" | "insufficient_content" | "audience_unavailable";
+
 export type SequenceStep = {
   id: string;
   variant: VariantId;
@@ -146,6 +148,9 @@ export type Prediction = {
 export type ScoreResult = {
   score: number;
   band: ScoreBand;
+  validity: ScoreValidity;
+  validityReason?: string;
+  audienceSize: number;
   prediction: Prediction;
   confidence: Confidence;
   comparableMessages: number;
