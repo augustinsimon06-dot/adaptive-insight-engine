@@ -17,7 +17,7 @@ import { useLemScore } from "@/lib/lemscore/store";
 import { scoreBand } from "@/lib/lemscore/scoring";
 import { prospects as allProspects } from "@/lib/lemscore/data";
 import type { Prospect } from "@/lib/lemscore/types";
-import { DemoBadge, ScorePill, bandWord } from "./shared";
+import { DemoBadge, InfoPopover, ScorePill, bandWord } from "./shared";
 import { FactorRow } from "./score-panel";
 
 const PAGE_SIZE = 15;
@@ -50,6 +50,10 @@ export function ProspectListScreen() {
     (Math.min(page, pageCount) - 1) * PAGE_SIZE,
     Math.min(page, pageCount) * PAGE_SIZE,
   );
+  const currentIds = current.map(({ p }) => p.id);
+  const allCurrentSelected =
+    currentIds.length > 0 && currentIds.every((id) => selected.includes(id));
+  const someCurrentSelected = currentIds.some((id) => selected.includes(id)) && !allCurrentSelected;
   const personas = Array.from(new Set(allProspects.map((p) => p.jobTitle))).sort();
 
   const statusOf = (p: Prospect) =>
@@ -70,6 +74,7 @@ export function ProspectListScreen() {
           Each prospect receives exactly one variant. The score evaluates the complete fixed
           sequence assigned to them.
         </span>
+        <InfoPopover label="These checkboxes only select table rows for manual bulk actions. An unchecked prospect still belongs to the campaign. Launch has a separate selection for choosing who will actually be sent." />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
@@ -133,7 +138,19 @@ export function ProspectListScreen() {
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
               <th className="px-3 py-2.5">
-                <span className="sr-only">Select</span>
+                <Checkbox
+                  aria-label="Select all prospects on this page"
+                  checked={
+                    allCurrentSelected ? true : someCurrentSelected ? "indeterminate" : false
+                  }
+                  onCheckedChange={() =>
+                    setSelected((previous) =>
+                      allCurrentSelected
+                        ? previous.filter((id) => !currentIds.includes(id))
+                        : Array.from(new Set([...previous, ...currentIds])),
+                    )
+                  }
+                />
               </th>
               <th className="px-3 py-2.5 font-medium">Name</th>
               <th className="px-3 py-2.5 font-medium">lemScore</th>
@@ -315,10 +332,14 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
             <summary className="cursor-pointer font-medium">Advanced prediction details</summary>
             <dl className="mt-3 space-y-1.5">
               <Line
-                label="Variant trend"
+                label="Launched-version outcome"
                 value={
                   launched && trend.recalibrated
-                    ? `${trend.score} (${trend.trend})`
+                    ? trend.trend === "up"
+                      ? "Above prediction"
+                      : trend.trend === "down"
+                        ? "Below prediction"
+                        : "In line with prediction"
                     : "Waiting for campaign outcomes"
                 }
               />

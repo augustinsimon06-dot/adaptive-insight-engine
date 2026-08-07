@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, Mail, Rocket, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -10,13 +11,52 @@ import { DemoBadge, InfoPopover } from "./shared";
 import { WorkflowCanvas } from "./workflow-canvas";
 
 export function LaunchScreen() {
-  const { steps, prospectsFor, launched, launch, activeProspects } = useLemScore();
+  const { steps, launched, launch, activeProspects, launchedProspects, launchSelection, update } =
+    useLemScore();
   const [variant, setVariant] = useState<VariantId>("A");
   const [search, setSearch] = useState("");
+  const [queueTab, setQueueTab] = useState<"to_send" | "sent">(launched ? "sent" : "to_send");
 
-  const visibleProspects = activeProspects.filter((prospect) =>
+  useEffect(() => {
+    if (launched) setQueueTab("sent");
+  }, [launched]);
+
+  const toSendProspects = launched
+    ? activeProspects.filter(
+        (prospect) => !launchedProspects.some((launchedOne) => launchedOne.id === prospect.id),
+      )
+    : activeProspects;
+  const queueProspects = queueTab === "sent" ? launchedProspects : toSendProspects;
+  const visibleProspects = queueProspects.filter((prospect) =>
     `${prospect.name} ${prospect.company}`.toLowerCase().includes(search.toLowerCase()),
   );
+  const selectedIds = launchSelection.filter((id) =>
+    toSendProspects.some((prospect) => prospect.id === id),
+  );
+  const allSelected =
+    toSendProspects.length > 0 &&
+    toSendProspects.every((prospect) => selectedIds.includes(prospect.id));
+  const someSelected = selectedIds.length > 0 && !allSelected;
+  const variantProspectCount = queueProspects.filter(
+    (prospect) => prospect.variant === variant,
+  ).length;
+
+  const toggleProspect = (id: string) => {
+    update({
+      launchSelection: launchSelection.includes(id)
+        ? launchSelection.filter((selectedId) => selectedId !== id)
+        : [...launchSelection, id],
+    });
+  };
+
+  const toggleAll = () => {
+    const queueIds = toSendProspects.map((prospect) => prospect.id);
+    update({
+      launchSelection: allSelected
+        ? launchSelection.filter((id) => !queueIds.includes(id))
+        : Array.from(new Set([...launchSelection, ...queueIds])),
+    });
+  };
 
   return (
     <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden bg-surface">
@@ -31,11 +71,29 @@ export function LaunchScreen() {
       <div className="grid min-h-0 flex-1 lg:grid-cols-[330px_minmax(0,1fr)]">
         <aside className="flex min-h-0 flex-col border-r border-border bg-background">
           <div className="flex border-b border-border px-4 pt-3">
-            <button className="border-b-2 border-primary px-3 py-2 text-sm font-semibold text-primary">
-              To send <span className="ml-1 text-xs">{activeProspects.length}</span>
+            <button
+              type="button"
+              onClick={() => setQueueTab("to_send")}
+              className={cn(
+                "px-3 py-2 text-sm font-medium",
+                queueTab === "to_send"
+                  ? "border-b-2 border-primary font-semibold text-primary"
+                  : "text-muted-foreground",
+              )}
+            >
+              To send <span className="ml-1 text-xs">{toSendProspects.length}</span>
             </button>
-            <button className="px-3 py-2 text-sm font-medium text-muted-foreground">
-              Sent <span className="ml-1 text-xs">0</span>
+            <button
+              type="button"
+              onClick={() => setQueueTab("sent")}
+              className={cn(
+                "px-3 py-2 text-sm font-medium",
+                queueTab === "sent"
+                  ? "border-b-2 border-primary font-semibold text-primary"
+                  : "text-muted-foreground",
+              )}
+            >
+              Sent <span className="ml-1 text-xs">{launchedProspects.length}</span>
             </button>
           </div>
           <div className="border-b border-border p-4">
@@ -50,36 +108,58 @@ export function LaunchScreen() {
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <p className="px-2 pb-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {visibleProspects.length} prospects ready
-            </p>
+            <div className="flex items-center gap-2 px-2 pb-3">
+              {queueTab === "to_send" && (
+                <Checkbox
+                  aria-label="Select all prospects to launch"
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleAll}
+                />
+              )}
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                {queueTab === "to_send"
+                  ? `${selectedIds.length} selected · ${visibleProspects.length} ready`
+                  : `${visibleProspects.length} prospects sent`}
+              </p>
+            </div>
             <div className="space-y-2">
-              {visibleProspects.map((prospect, index) => (
-                <button
+              {visibleProspects.map((prospect) => (
+                <div
                   key={prospect.id}
-                  type="button"
-                  onClick={() => setVariant(prospect.variant)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors",
-                    index === 0
+                    queueTab === "to_send" && selectedIds.includes(prospect.id)
                       ? "border-primary bg-primary/5"
                       : "border-transparent hover:border-border hover:bg-muted/30",
                   )}
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                    {prospect.firstName[0]}
-                    {prospect.lastName[0]}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{prospect.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {prospect.email}
+                  {queueTab === "to_send" && (
+                    <Checkbox
+                      aria-label={`Select ${prospect.name} for launch`}
+                      checked={selectedIds.includes(prospect.id)}
+                      onCheckedChange={() => toggleProspect(prospect.id)}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setVariant(prospect.variant)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                      {prospect.firstName[0]}
+                      {prospect.lastName[0]}
                     </span>
-                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Mail className="h-3 w-3" /> Sequence {prospect.variant}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{prospect.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {prospect.email}
+                      </span>
+                      <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Mail className="h-3 w-3" /> Sequence {prospect.variant}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -107,7 +187,8 @@ export function LaunchScreen() {
               ))}
             </div>
             <span className="text-xs text-muted-foreground">
-              {prospectsFor(variant).length} prospects · random 50/50 split preserved
+              {variantProspectCount} prospects in this {queueTab === "sent" ? "sent" : "launch"}{" "}
+              queue · random 50/50 split preserved
             </span>
             <InfoPopover label="Each prospect receives exactly one A/B variant. lemScore evaluates the fixed messages but never changes the split or sends anything automatically in this beta." />
           </div>
@@ -115,7 +196,7 @@ export function LaunchScreen() {
           <WorkflowCanvas
             variant={variant}
             steps={steps(variant)}
-            prospectCount={prospectsFor(variant).length}
+            prospectCount={variantProspectCount}
             showContent
             className="min-h-0 flex-1"
             onAddStep={() =>
@@ -134,17 +215,18 @@ export function LaunchScreen() {
             </div>
             <Button
               className="ml-auto"
-              disabled={launched}
+              disabled={launched || selectedIds.length === 0}
               onClick={() => {
-                launch();
+                launch(selectedIds);
                 toast.success("Demo A/B campaign launched", {
-                  description:
-                    "No real message was sent. lemScore snapshots were frozen for Performance.",
+                  description: `${selectedIds.length} selected prospects were simulated. No real message was sent.`,
                 });
               }}
             >
               <Rocket className="h-4 w-4" />
-              {launched ? "Campaign active (demo)" : "Launch A/B campaign (demo)"}
+              {launched
+                ? "Campaign active (demo)"
+                : `Launch ${selectedIds.length} selected prospects (demo)`}
             </Button>
           </div>
         </main>

@@ -41,6 +41,8 @@ type Persisted = {
   sortDir: "asc" | "desc" | null;
   launched: boolean;
   launchedAt: string | null;
+  launchSelection: string[];
+  launchedProspectIds: string[];
   snapshots: Record<string, ScoreSnapshot>;
   mainTab: "sequence" | "prospects" | "launch" | "performance";
   perfView: "overview" | "steps";
@@ -57,6 +59,8 @@ const defaultState: Persisted = {
   sortDir: null,
   launched: false,
   launchedAt: null,
+  launchSelection: allProspects.map((prospect) => prospect.id),
+  launchedProspectIds: [],
   snapshots: {},
   mainTab: "sequence",
   perfView: "overview",
@@ -68,7 +72,20 @@ function load(): Persisted {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState;
     const parsed = JSON.parse(raw) as Partial<Persisted>;
-    return { ...defaultState, ...parsed, filters: { ...defaultState.filters, ...parsed.filters } };
+    const excluded = parsed.excluded ?? defaultState.excluded;
+    const moved = parsed.moved ?? defaultState.moved;
+    const eligibleIds = allProspects
+      .filter((prospect) => !excluded.includes(prospect.id) && !moved[prospect.id])
+      .map((prospect) => prospect.id);
+    return {
+      ...defaultState,
+      ...parsed,
+      filters: { ...defaultState.filters, ...parsed.filters },
+      launchSelection: parsed.launchSelection ?? eligibleIds,
+      launchedProspectIds:
+        parsed.launchedProspectIds ??
+        (parsed.launched ? eligibleIds : defaultState.launchedProspectIds),
+    };
   } catch {
     return defaultState;
   }
@@ -81,7 +98,9 @@ type Store = Persisted & {
   step: (id: string) => SequenceStep | undefined;
   setStepContent: (id: string, patch: { subject?: string; body?: string }) => void;
   activeProspects: typeof allProspects;
+  launchedProspects: typeof allProspects;
   prospectsFor: (variant: VariantId) => typeof allProspects;
+  launchedProspectsFor: (variant: VariantId) => typeof allProspects;
   messageScore: (stepId: string) => ReturnType<typeof aggregateMessageScore>;
   prospectScore: (prospectId: string) => ReturnType<typeof aggregateProspectSequenceScore>;
   variantScore: (variant: VariantId) => number;
@@ -93,7 +112,7 @@ type Store = Persisted & {
   ) => ReturnType<typeof recalibrateAfterOutcomes> & {
     snapshot: ScoreSnapshot | null;
   };
-  launch: () => void;
+  launch: (prospectIds?: string[]) => void;
   minOutcomes: number;
 };
 
@@ -154,9 +173,22 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
     [state.excluded, state.moved],
   );
 
+  const launchedProspects = useMemo(
+    () =>
+      state.launched
+        ? allProspects.filter((prospect) => state.launchedProspectIds.includes(prospect.id))
+        : [],
+    [state.launched, state.launchedProspectIds],
+  );
+
   const prospectsFor = useCallback(
     (variant: VariantId) => activeProspects.filter((p) => p.variant === variant),
     [activeProspects],
+  );
+
+  const launchedProspectsFor = useCallback(
+    (variant: VariantId) => launchedProspects.filter((prospect) => prospect.variant === variant),
+    [launchedProspects],
   );
 
   const messageScore = useCallback(
@@ -177,13 +209,13 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
 
   const variantScore = useCallback(
     (variant: VariantId) => {
-      const list = prospectsFor(variant);
+      const list = state.launched ? launchedProspectsFor(variant) : prospectsFor(variant);
       if (!list.length) return 0;
       const seq = steps(variant);
       const total = list.reduce((sum, p) => sum + aggregateProspectSequenceScore(seq, p).score, 0);
       return Math.round(total / list.length);
     },
-    [prospectsFor, steps],
+    [state.launched, prospectsFor, launchedProspectsFor, steps],
   );
 
   const outcome = useCallback(
@@ -216,50 +248,58 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
     [state.snapshots, state.launched, outcome],
   );
 
-  const launch = useCallback(() => {
-    const snapshots: Record<string, ScoreSnapshot> = {};
-    const capturedAt = new Date().toISOString();
-    (["A", "B"] as VariantId[]).forEach((variant) => {
-      const variantSteps = steps(variant);
-      variantSteps
-        .filter((s) => s.hasContent)
-        .forEach((s) => {
-          const r = aggregateMessageScore(s, prospectsFor(variant));
-          snapshots[s.id] = {
-            score: r.score,
-            predictedPositiveRate: r.prediction.positiveReplyRate,
-            predictedOpportunityRate: r.prediction.opportunityRate,
-            confidence: r.confidence,
-            capturedAt,
-          };
-        });
-      const list = prospectsFor(variant);
-      const avg = list.length
-        ? Math.round(
-            list.reduce(
-              (sum, p) => sum + aggregateProspectSequenceScore(variantSteps, p).score,
-              0,
-            ) / list.length,
-          )
-        : 0;
-      const firstStep = variantSteps.find((s) => s.hasContent)!;
-      const firstScore = aggregateMessageScore(firstStep, list);
-      snapshots[`variant:${variant}`] = {
-        score: avg,
-        predictedPositiveRate: firstScore.prediction.positiveReplyRate,
-        predictedOpportunityRate: firstScore.prediction.opportunityRate,
-        confidence: firstScore.confidence,
-        capturedAt,
-      };
-    });
-    setState((prev) => ({
-      ...prev,
-      launched: true,
-      launchedAt: capturedAt,
-      snapshots,
-      mainTab: "performance",
-    }));
-  }, [steps, prospectsFor]);
+  const launch = useCallback(
+    (prospectIds?: string[]) => {
+      const selectedIds = prospectIds ?? state.launchSelection;
+      const launchList = activeProspects.filter((prospect) => selectedIds.includes(prospect.id));
+      if (!launchList.length) return;
+      const snapshots: Record<string, ScoreSnapshot> = {};
+      const capturedAt = new Date().toISOString();
+      (["A", "B"] as VariantId[]).forEach((variant) => {
+        const variantSteps = steps(variant);
+        const list = launchList.filter((prospect) => prospect.variant === variant);
+        variantSteps
+          .filter((s) => s.hasContent)
+          .forEach((s) => {
+            const r = aggregateMessageScore(s, list);
+            snapshots[s.id] = {
+              score: r.score,
+              predictedPositiveRate: r.prediction.positiveReplyRate,
+              predictedOpportunityRate: r.prediction.opportunityRate,
+              confidence: r.confidence,
+              capturedAt,
+            };
+          });
+        const avg = list.length
+          ? Math.round(
+              list.reduce(
+                (sum, p) => sum + aggregateProspectSequenceScore(variantSteps, p).score,
+                0,
+              ) / list.length,
+            )
+          : 0;
+        const firstStep = variantSteps.find((s) => s.hasContent)!;
+        const firstScore = aggregateMessageScore(firstStep, list);
+        snapshots[`variant:${variant}`] = {
+          score: avg,
+          predictedPositiveRate: firstScore.prediction.positiveReplyRate,
+          predictedOpportunityRate: firstScore.prediction.opportunityRate,
+          confidence: firstScore.confidence,
+          capturedAt,
+        };
+      });
+      setState((prev) => ({
+        ...prev,
+        launched: true,
+        launchedAt: capturedAt,
+        launchSelection: launchList.map((prospect) => prospect.id),
+        launchedProspectIds: launchList.map((prospect) => prospect.id),
+        snapshots,
+        mainTab: "performance",
+      }));
+    },
+    [steps, activeProspects, state.launchSelection],
+  );
 
   const value = useMemo<Store>(
     () => ({
@@ -278,7 +318,9 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       step,
       setStepContent,
       activeProspects,
+      launchedProspects,
       prospectsFor,
+      launchedProspectsFor,
       messageScore,
       prospectScore,
       variantScore,
@@ -294,7 +336,9 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       step,
       setStepContent,
       activeProspects,
+      launchedProspects,
       prospectsFor,
+      launchedProspectsFor,
       messageScore,
       prospectScore,
       variantScore,

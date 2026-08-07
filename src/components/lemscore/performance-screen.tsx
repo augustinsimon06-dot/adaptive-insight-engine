@@ -29,7 +29,7 @@ import { channelLabel } from "@/lib/lemscore/benchmarks";
 import { simulatedOutcomes, stepMetrics } from "@/lib/lemscore/data";
 import { useLemScore } from "@/lib/lemscore/store";
 import type { VariantId } from "@/lib/lemscore/types";
-import { DemoBadge, ScorePill, TrendIndicator } from "./shared";
+import { DemoBadge, InfoPopover, ScorePill, TrendArrow } from "./shared";
 
 export function PerformanceScreen() {
   const {
@@ -42,7 +42,8 @@ export function PerformanceScreen() {
     variantScore,
     outcome,
     activeProspects,
-    prospectsFor,
+    launchedProspects,
+    launchedProspectsFor,
   } = useLemScore();
   const [stepId, setStepId] = useState("A1");
   const [range, setRange] = useState("last_30");
@@ -83,7 +84,7 @@ export function PerformanceScreen() {
     .filter(([id]) => id.endsWith("1") || id.endsWith("5"))
     .reduce((sum, [, metric]) => sum + metric.sent, 0);
   const delivered = Math.max(0, totals.sent - 3);
-  const reached = Math.max(0, activeProspects.length - 1);
+  const reached = Math.max(0, launchedProspects.length - 1);
 
   const variantDetail = (variant: VariantId) => {
     const current = variantScore(variant);
@@ -92,7 +93,7 @@ export function PerformanceScreen() {
     return {
       trend: trend.trend,
       launchScore: trend.snapshot?.score ?? null,
-      currentScore: trend.score,
+      currentScore: current,
       predictedPositive: trend.snapshot?.predictedPositiveRate ?? 0,
       actualPositive: result.actualPositiveRate,
       predictedOpportunity: trend.snapshot?.predictedOpportunityRate ?? 0,
@@ -118,7 +119,7 @@ export function PerformanceScreen() {
         <main className="min-w-0 space-y-5 overflow-hidden p-6">
           {perfView === "overview" ? (
             <>
-              <Funnel prospectCount={activeProspects.length} />
+              <Funnel prospectCount={launchedProspects.length} />
 
               <section className="rounded-2xl border border-border bg-background p-5 shadow-sm">
                 <h2 className="text-base font-semibold">Campaign statistics</h2>
@@ -132,13 +133,13 @@ export function PerformanceScreen() {
                   <MetricCard
                     icon={<Flag />}
                     label="Prospects launched"
-                    value={`${activeProspects.length}`}
-                    helper={`${prospectsFor("A").length} in A · ${prospectsFor("B").length} in B`}
+                    value={`${launchedProspects.length}`}
+                    helper={`${launchedProspectsFor("A").length} in A · ${launchedProspectsFor("B").length} in B`}
                   />
                   <MetricCard
                     icon={<UserCheck />}
                     label="Prospects reached"
-                    value={`${Math.round((reached / activeProspects.length) * 100)}%`}
+                    value={`${launchedProspects.length ? Math.round((reached / launchedProspects.length) * 100) : 0}%`}
                     helper={`${reached} prospects`}
                   />
                 </MetricSection>
@@ -200,8 +201,8 @@ export function PerformanceScreen() {
                   <div>
                     <h2 className="text-base font-semibold text-primary">lemScore tracking</h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Prediction quality is added to Performance without replacing the A/B test or
-                      lemlist metrics.
+                      Current scores follow your latest edits. Outcome signals remain tied to the
+                      version frozen at launch.
                     </p>
                   </div>
                   <DemoBadge className="ml-auto" />
@@ -216,10 +217,32 @@ export function PerformanceScreen() {
                       >
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-semibold">Sequence {variant}</h3>
-                          <TrendIndicator detail={detail} className="text-base" />
                           <span className="ml-auto text-xs text-muted-foreground">
                             {detail.sends} sends analyzed
                           </span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <ScorePill score={detail.currentScore} />
+                          <span className="text-xs text-muted-foreground">
+                            Current whole-sequence score
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                          {steps(variant)
+                            .filter((step) => step.hasContent)
+                            .map((step) => (
+                              <span
+                                key={step.id}
+                                className="rounded-full border border-border bg-background px-2 py-1 text-muted-foreground"
+                              >
+                                {step.label.split("·")[1]?.trim()}: {messageScore(step.id).score}
+                              </span>
+                            ))}
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-2.5 text-xs">
+                          <span className="text-muted-foreground">Score frozen at launch</span>
+                          <strong className="tabular-nums">{detail.launchScore ?? "—"}/100</strong>
+                          <OutcomeSignal detail={detail} />
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                           <MiniMetric
@@ -304,29 +327,34 @@ export function PerformanceScreen() {
                   const current = messageScore(twin.id).score;
                   const trend = trendFor(twin.id, current, variant);
                   const result = outcome(variant)!;
+                  const detail = {
+                    trend: trend.trend,
+                    launchScore: trend.snapshot?.score ?? null,
+                    currentScore: current,
+                    predictedPositive: trend.snapshot?.predictedPositiveRate ?? 0,
+                    actualPositive: result.actualPositiveRate,
+                    predictedOpportunity: trend.snapshot?.predictedOpportunityRate ?? 0,
+                    actualOpportunity: result.actualOpportunityRate,
+                    sends: result.sends,
+                    confidence: trend.snapshot?.confidence ?? "Medium",
+                    explanation: trend.explanation,
+                  };
                   return (
                     <div key={variant} className="rounded-xl border border-border bg-card p-4">
                       <h3 className="text-sm font-semibold">Sequence {variant}</h3>
                       <p className="text-xs text-muted-foreground">
                         {channelLabel(twin.channel)} · position {twin.position}
                       </p>
-                      <div className="mt-3 flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">lemScore at launch</span>
-                        <TrendIndicator
-                          detail={{
-                            trend: trend.trend,
-                            launchScore: trend.snapshot?.score ?? null,
-                            currentScore: trend.score,
-                            predictedPositive: trend.snapshot?.predictedPositiveRate ?? 0,
-                            actualPositive: result.actualPositiveRate,
-                            predictedOpportunity: trend.snapshot?.predictedOpportunityRate ?? 0,
-                            actualOpportunity: result.actualOpportunityRate,
-                            sends: result.sends,
-                            confidence: trend.snapshot?.confidence ?? "Medium",
-                            explanation: trend.explanation,
-                          }}
-                        />
-                        <ScorePill score={trend.score} suffix={false} className="ml-auto" />
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                        <ScorePill score={current} />
+                        <span className="text-xs text-muted-foreground">
+                          Current live message score
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs">
+                        <span className="text-muted-foreground">Score at launch</span>
+                        <strong>{trend.snapshot?.score ?? "—"}/100</strong>
+                        <OutcomeSignal detail={detail} />
                       </div>
                     </div>
                   );
@@ -337,6 +365,61 @@ export function PerformanceScreen() {
         </main>
       </div>
     </div>
+  );
+}
+
+type OutcomeSignalDetail = {
+  trend: "up" | "down" | "flat";
+  launchScore: number | null;
+  currentScore: number;
+  predictedPositive: number;
+  actualPositive: number;
+  predictedOpportunity: number;
+  actualOpportunity: number;
+  sends: number;
+  confidence: string;
+  explanation: string;
+};
+
+function OutcomeSignal({ detail }: { detail: OutcomeSignalDetail }) {
+  const label =
+    detail.trend === "up"
+      ? "Results above prediction"
+      : detail.trend === "down"
+        ? "Results below prediction"
+        : "Results match prediction";
+
+  return (
+    <InfoPopover
+      className="w-80"
+      trigger={
+        <button
+          type="button"
+          className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <TrendArrow trend={detail.trend} /> {label}
+        </button>
+      }
+    >
+      <div className="space-y-2">
+        <p className="font-semibold text-foreground">Outcome of the version sent at launch</p>
+        <div className="grid grid-cols-2 gap-2">
+          <MiniMetric label="Score at launch" value={detail.launchScore ?? "—"} />
+          <MiniMetric label="Current live score" value={detail.currentScore} />
+          <MiniMetric label="Predicted replies" value={`${detail.predictedPositive}%`} />
+          <MiniMetric label="Actual replies" value={`${detail.actualPositive}%`} />
+          <MiniMetric label="Predicted opportunities" value={`${detail.predictedOpportunity}%`} />
+          <MiniMetric label="Actual opportunities" value={`${detail.actualOpportunity}%`} />
+        </div>
+        <p className="text-muted-foreground">
+          {detail.explanation} Current edits never rewrite historical launch results.
+        </p>
+        <p className="text-muted-foreground">
+          {detail.sends} sends analyzed · Confidence {detail.confidence}
+        </p>
+        <DemoBadge />
+      </div>
+    </InfoPopover>
   );
 }
 
