@@ -11,7 +11,15 @@ import { DemoBadge, InfoPopover } from "./shared";
 import { WorkflowCanvas } from "./workflow-canvas";
 
 export function LaunchScreen() {
-  const { steps, launch, activeProspects, launchedProspects } = useLemScore();
+  const {
+    steps,
+    launch,
+    activeProspects,
+    launchedProspects,
+    lemScoreEnabled,
+    lemScoreEntitled,
+  } = useLemScore();
+  const lemScoreActive = lemScoreEnabled && lemScoreEntitled;
   const [variant, setVariant] = useState<VariantId>("A");
   const [search, setSearch] = useState("");
   const [queueTab, setQueueTab] = useState<"to_send" | "sent">("to_send");
@@ -205,7 +213,13 @@ export function LaunchScreen() {
                   : "to-send"}{" "}
               view · random 50/50 split preserved
             </span>
-            <InfoPopover label="Each prospect receives exactly one A/B variant. lemScore evaluates the fixed messages but never changes the split or sends anything automatically in this beta." />
+            <InfoPopover
+              label={
+                lemScoreActive
+                  ? "Each prospect receives exactly one A/B variant. lemScore evaluates the fixed sequence-to-prospect fit but never changes the split or sends anything automatically."
+                  : "Each prospect receives exactly one A/B variant. The normal 50/50 split is preserved."
+              }
+            />
           </div>
 
           <WorkflowCanvas
@@ -225,7 +239,9 @@ export function LaunchScreen() {
             <div className="flex items-start gap-2 text-xs text-muted-foreground">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
               <span>
-                Beta simulation: no real message will be sent. Scores never block the launch.
+                {lemScoreActive
+                  ? "Beta simulation: no real message will be sent. lemScore predictions never block the launch."
+                  : "Beta simulation: no real message will be sent."}
               </span>
             </div>
             <Button
