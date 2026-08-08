@@ -219,18 +219,21 @@ export function LaunchScreen() {
             </div>
             <Button
               className="ml-auto"
-              disabled={launched || selectedIds.length === 0}
+              disabled={queueTab !== "to_send" || selectedIds.length === 0}
               onClick={() => {
+                const count = selectedIds.length;
                 launch(selectedIds);
-                toast.success("Demo A/B campaign launched", {
-                  description: `${selectedIds.length} selected prospects were simulated. No real message was sent.`,
+                toast.success("Demo A/B launch completed", {
+                  description: `${count} selected prospect${count === 1 ? "" : "s"} were simulated. No real message was sent.`,
                 });
               }}
             >
               <Rocket className="h-4 w-4" />
-              {launched
-                ? "Campaign active (demo)"
-                : `Launch ${selectedIds.length} selected prospects (demo)`}
+              {queueTab === "sent"
+                ? "Switch to To send to launch"
+                : selectedIds.length
+                  ? `Launch ${selectedIds.length} selected prospect${selectedIds.length === 1 ? "" : "s"} (demo)`
+                  : "Select prospects to launch"}
             </Button>
           </div>
         </main>
