@@ -71,14 +71,16 @@ export function IcpScreen() {
   const [analyzing, setAnalyzing] = useState(false);
 
   const patch = (next: Partial<CampaignIcpState>) =>
-    setState((current) => ({ ...current, ...next, confirmed: false }));
+    setState((current) => saveIcpState({ ...current, ...next, confirmed: false }));
 
   const patchContext = (next: Partial<ProspectContext>) =>
-    setState((current) => ({
-      ...current,
-      confirmed: false,
-      context: { ...current.context, ...next },
-    }));
+    setState((current) =>
+      saveIcpState({
+        ...current,
+        confirmed: false,
+        context: { ...current.context, ...next },
+      }),
+    );
 
   const chooseMode = (mode: IcpMode) => patch({ mode });
 
@@ -86,7 +88,7 @@ export function IcpScreen() {
     setAnalyzing(true);
     window.setTimeout(() => {
       const context = suggestIcpFromBusiness(state.companyName, state.executiveSummary);
-      setState((current) => ({ ...current, context, confirmed: false }));
+      setState((current) => saveIcpState({ ...current, context, confirmed: false }));
       setAnalyzing(false);
       toast.success("Suggested ICP ready", {
         description: "Review or adjust the proposed audience before confirming it.",
@@ -293,6 +295,9 @@ export function IcpScreen() {
             <p className="mt-1 text-muted-foreground">
               Sequence score = message × confirmed ICP × channel × position × timing × historical outcomes.
               Prospect List then adds each real prospect's company, persona and signals to calculate the individual prediction.
+            </p>
+            <p className="mt-2 font-medium text-primary">
+              Changes are applied immediately: existing message scores and individual prospect scores recalculate from the current ICP.
             </p>
           </div>
 
