@@ -385,7 +385,7 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
               <Line label="Confidence" value={result.confidence} />
               <Line
                 label="Comparable messages"
-                value={result.comparableMessages.toLocaleString()}
+                value={formatCount(result.comparableMessages)}
               />
             </dl>
           </details>
