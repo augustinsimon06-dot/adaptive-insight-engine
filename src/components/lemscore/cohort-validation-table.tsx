@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { simulateProspectOutcome } from "@/lib/lemscore/data";
+import { useLemScore } from "@/lib/lemscore/store";
 import type { VariantId } from "@/lib/lemscore/types";
 import { DemoBadge, InfoPopover } from "./shared";
 
@@ -29,20 +31,6 @@ type CohortMetric =
   | "opportunity"
   | "closedWon"
   | "closedLost";
-
-type DemoCohortSeed = {
-  variant: VariantId;
-  label: "90–100" | "80–89" | "60–79" | "Below 60";
-  min: number;
-  max: number;
-  total: number;
-  average: number;
-  positiveReply: number;
-  meeting: number;
-  opportunity: number;
-  closedWon: number;
-  closedLost: number;
-};
 
 type OutcomePoint = {
   stage: string;
@@ -58,67 +46,37 @@ type StepPerformance = {
   current: number;
 };
 
-const LAUNCHED_PROSPECTS: Record<PerformanceScope, number> = {
-  all: 164,
-  A: 82,
-  B: 82,
+type StepTemplate = Omit<StepPerformance, "reached"> & { reachedShare: number };
+
+const OVERALL_BENCHMARKS: Record<PerformanceScope, number[]> = {
+  all: [6.9, 3.0, 1.7, 0.6],
+  A: [7.1, 3.1, 1.8, 0.6],
+  B: [6.7, 2.9, 1.6, 0.6],
 };
 
-const OVERALL_OUTCOMES: Record<PerformanceScope, OutcomePoint[]> = {
+const STEP_TEMPLATES: Record<PerformanceScope, StepTemplate[]> = {
   all: [
-    { stage: "Positive reply", historical: 6.9, current: 8.8 },
-    { stage: "Meeting", historical: 3.0, current: 4.4 },
-    { stage: "Opportunity", historical: 1.7, current: 2.8 },
-    { stage: "Won", historical: 0.6, current: 1.2 },
+    { step: "Email #1", metric: "Opened", reachedShare: 1, historical: 58.4, current: 66.5 },
+    { step: "LinkedIn connection request", metric: "Accepted", reachedShare: 0.805, historical: 34.2, current: 37.9 },
+    { step: "LinkedIn message", metric: "Engaged", reachedShare: 0.659, historical: 20.6, current: 25.0 },
+    { step: "Follow-up email", metric: "Opened", reachedShare: 0.433, historical: 47.8, current: 53.5 },
+    { step: "Final email", metric: "Replied", reachedShare: 0.28, historical: 6.8, current: 4.3 },
   ],
   A: [
-    { stage: "Positive reply", historical: 7.1, current: 9.8 },
-    { stage: "Meeting", historical: 3.1, current: 5.0 },
-    { stage: "Opportunity", historical: 1.8, current: 3.3 },
-    { stage: "Won", historical: 0.6, current: 1.5 },
+    { step: "Email #1", metric: "Opened", reachedShare: 1, historical: 58.4, current: 69.0 },
+    { step: "LinkedIn connection request", metric: "Accepted", reachedShare: 0.829, historical: 34.2, current: 40.0 },
+    { step: "LinkedIn message", metric: "Engaged", reachedShare: 0.707, historical: 20.6, current: 28.0 },
+    { step: "Follow-up email", metric: "Opened", reachedShare: 0.476, historical: 47.8, current: 57.0 },
+    { step: "Final email", metric: "Replied", reachedShare: 0.305, historical: 6.8, current: 6.0 },
   ],
   B: [
-    { stage: "Positive reply", historical: 6.7, current: 7.8 },
-    { stage: "Meeting", historical: 2.9, current: 3.8 },
-    { stage: "Opportunity", historical: 1.6, current: 2.3 },
-    { stage: "Won", historical: 0.6, current: 0.9 },
+    { step: "Email #1", metric: "Opened", reachedShare: 1, historical: 58.4, current: 64.0 },
+    { step: "LinkedIn connection request", metric: "Accepted", reachedShare: 0.78, historical: 34.2, current: 35.7 },
+    { step: "LinkedIn message", metric: "Engaged", reachedShare: 0.61, historical: 20.6, current: 21.5 },
+    { step: "Follow-up email", metric: "Opened", reachedShare: 0.39, historical: 47.8, current: 49.2 },
+    { step: "Final email", metric: "Replied", reachedShare: 0.256, historical: 6.8, current: 2.3 },
   ],
 };
-
-const STEP_PERFORMANCE: Record<PerformanceScope, StepPerformance[]> = {
-  all: [
-    { step: "Email #1", metric: "Opened", reached: 164, historical: 58.4, current: 66.5 },
-    { step: "LinkedIn connection request", metric: "Accepted", reached: 132, historical: 34.2, current: 37.9 },
-    { step: "LinkedIn message", metric: "Engaged", reached: 108, historical: 20.6, current: 25.0 },
-    { step: "Follow-up email", metric: "Opened", reached: 71, historical: 47.8, current: 53.5 },
-    { step: "Final email", metric: "Replied", reached: 46, historical: 6.8, current: 4.3 },
-  ],
-  A: [
-    { step: "Email #1", metric: "Opened", reached: 82, historical: 58.4, current: 69.0 },
-    { step: "LinkedIn connection request", metric: "Accepted", reached: 68, historical: 34.2, current: 40.0 },
-    { step: "LinkedIn message", metric: "Engaged", reached: 58, historical: 20.6, current: 28.0 },
-    { step: "Follow-up email", metric: "Opened", reached: 39, historical: 47.8, current: 57.0 },
-    { step: "Final email", metric: "Replied", reached: 25, historical: 6.8, current: 6.0 },
-  ],
-  B: [
-    { step: "Email #1", metric: "Opened", reached: 82, historical: 58.4, current: 64.0 },
-    { step: "LinkedIn connection request", metric: "Accepted", reached: 64, historical: 34.2, current: 35.7 },
-    { step: "LinkedIn message", metric: "Engaged", reached: 50, historical: 20.6, current: 21.5 },
-    { step: "Follow-up email", metric: "Opened", reached: 32, historical: 47.8, current: 49.2 },
-    { step: "Final email", metric: "Replied", reached: 21, historical: 6.8, current: 2.3 },
-  ],
-};
-
-const DEMO_COHORTS: DemoCohortSeed[] = [
-  { variant: "A", label: "90–100", min: 90, max: 100, total: 160, average: 93, positiveReply: 19, meeting: 12, opportunity: 8, closedWon: 5, closedLost: 2 },
-  { variant: "A", label: "80–89", min: 80, max: 89, total: 220, average: 84, positiveReply: 20, meeting: 13, opportunity: 9, closedWon: 5, closedLost: 4 },
-  { variant: "A", label: "60–79", min: 60, max: 79, total: 260, average: 69, positiveReply: 16, meeting: 9, opportunity: 6, closedWon: 2, closedLost: 7 },
-  { variant: "A", label: "Below 60", min: 0, max: 59, total: 200, average: 51, positiveReply: 6, meeting: 2, opportunity: 1, closedWon: 0, closedLost: 6 },
-  { variant: "B", label: "90–100", min: 90, max: 100, total: 120, average: 92, positiveReply: 12, meeting: 7, opportunity: 5, closedWon: 3, closedLost: 1 },
-  { variant: "B", label: "80–89", min: 80, max: 89, total: 180, average: 83, positiveReply: 14, meeting: 8, opportunity: 5, closedWon: 3, closedLost: 3 },
-  { variant: "B", label: "60–79", min: 60, max: 79, total: 240, average: 68, positiveReply: 12, meeting: 6, opportunity: 3, closedWon: 1, closedLost: 6 },
-  { variant: "B", label: "Below 60", min: 0, max: 59, total: 170, average: 50, positiveReply: 4, meeting: 1, opportunity: 0, closedWon: 0, closedLost: 6 },
-];
 
 const THRESHOLDS: Record<CohortMetric, { good: number; medium: number }> = {
   positiveReply: { good: 8, medium: 5 },
@@ -133,9 +91,64 @@ function performanceScopeLabel(scope: PerformanceScope) {
 }
 
 export function CohortValidationTable() {
-  const [performanceScope, setPerformanceScope] = useState<PerformanceScope>("all");
-  const [view, setView] = useState<CohortView>("all");
+  const {
+    launchedProspects,
+    launchedProspectsFor,
+    prospectLaunchSnapshot,
+    prospectScore,
+  } = useLemScore();
+  const hasA = launchedProspectsFor("A").length > 0;
+  const hasB = launchedProspectsFor("B").length > 0;
+  const hasBoth = hasA && hasB;
+  const fallbackScope: PerformanceScope = hasBoth ? "all" : hasA ? "A" : "B";
+
+  const [performanceScope, setPerformanceScope] = useState<PerformanceScope>(fallbackScope);
+  const [view, setView] = useState<CohortView>(fallbackScope);
   const [preset, setPreset] = useState<CohortPreset>("detailed");
+
+  useEffect(() => {
+    if ((!hasBoth && performanceScope === "all") || (performanceScope === "A" && !hasA) || (performanceScope === "B" && !hasB)) {
+      setPerformanceScope(fallbackScope);
+    }
+    if ((!hasBoth && (view === "all" || view === "split")) || (view === "A" && !hasA) || (view === "B" && !hasB)) {
+      setView(fallbackScope);
+    }
+  }, [fallbackScope, hasA, hasB, hasBoth, performanceScope, view]);
+
+  const observations = useMemo(
+    () =>
+      launchedProspects.map((prospect) => {
+        const snapshot = prospectLaunchSnapshot(prospect.id);
+        const score = snapshot?.score ?? prospectScore(prospect.id).score;
+        return {
+          prospect,
+          score,
+          frozen: Boolean(snapshot),
+          result: simulateProspectOutcome(prospect, score),
+        };
+      }),
+    [launchedProspects, prospectLaunchSnapshot, prospectScore],
+  );
+
+  const scopeObservations = observations.filter(
+    ({ prospect }) => performanceScope === "all" || prospect.variant === performanceScope,
+  );
+  const launchedCount = scopeObservations.length;
+  if (!launchedCount) return null;
+
+  const rate = (key: "positiveReply" | "meeting" | "opportunity" | "closedWon") =>
+    (scopeObservations.filter(({ result }) => result[key]).length / launchedCount) * 100;
+  const benchmark = OVERALL_BENCHMARKS[performanceScope];
+  const outcomeData: OutcomePoint[] = [
+    { stage: "Positive reply", historical: benchmark[0]!, current: rate("positiveReply") },
+    { stage: "Meeting", historical: benchmark[1]!, current: rate("meeting") },
+    { stage: "Opportunity", historical: benchmark[2]!, current: rate("opportunity") },
+    { stage: "Won", historical: benchmark[3]!, current: rate("closedWon") },
+  ];
+  const stepRows: StepPerformance[] = STEP_TEMPLATES[performanceScope].map((row) => ({
+    ...row,
+    reached: Math.min(launchedCount, Math.round(launchedCount * row.reachedShare)),
+  }));
 
   const bands =
     preset === "detailed"
@@ -153,33 +166,35 @@ export function CohortValidationTable() {
 
   const variants: Array<VariantId | "all"> =
     view === "split" ? ["A", "B"] : view === "A" || view === "B" ? [view] : ["all"];
-  const sum = (items: DemoCohortSeed[], key: keyof DemoCohortSeed) =>
-    items.reduce((total, item) => total + Number(item[key]), 0);
 
-  const rows = variants.flatMap((variant) =>
-    bands.map((band) => {
-      const members = DEMO_COHORTS.filter(
-        (item) =>
-          (variant === "all" || item.variant === variant) &&
-          item.min >= band.min &&
-          item.max <= band.max,
+  const cohortRows = variants.flatMap((variant) =>
+    bands.flatMap((band) => {
+      const members = observations.filter(
+        ({ prospect, score, frozen }) =>
+          frozen &&
+          (variant === "all" || prospect.variant === variant) &&
+          score >= band.min &&
+          score <= band.max,
       );
-      const total = sum(members, "total");
-      return {
-        key: `${variant}-${band.label}`,
-        label: `${band.label}${variant === "all" ? "" : ` · ${variant}`}`,
-        total,
-        average: total
-          ? Math.round(members.reduce((score, item) => score + item.average * item.total, 0) / total)
-          : null,
-        positiveReply: sum(members, "positiveReply"),
-        meeting: sum(members, "meeting"),
-        opportunity: sum(members, "opportunity"),
-        closedWon: sum(members, "closedWon"),
-        closedLost: sum(members, "closedLost"),
-      };
+      if (!members.length) return [];
+      const count = (key: CohortMetric) => members.filter(({ result }) => result[key]).length;
+      return [
+        {
+          key: `${variant}-${band.label}`,
+          label: `${band.label}${variant === "all" ? "" : ` · ${variant}`}`,
+          total: members.length,
+          average: Math.round(members.reduce((sum, item) => sum + item.score, 0) / members.length),
+          positiveReply: count("positiveReply"),
+          meeting: count("meeting"),
+          opportunity: count("opportunity"),
+          closedWon: count("closedWon"),
+          closedLost: count("closedLost"),
+        },
+      ];
     }),
   );
+
+  const frozenCount = observations.filter(({ frozen }) => frozen).length;
 
   return (
     <div className="grid bg-surface lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -189,7 +204,7 @@ export function CohortValidationTable() {
           <div>
             <p className="text-[10px] font-semibold tracking-wide text-primary uppercase">Performance scope</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              This filter controls both the overall outcomes chart and the step-results table below.
+              Only variants with prospects actually launched are available here.
             </p>
           </div>
           <Select value={performanceScope} onValueChange={(value) => setPerformanceScope(value as PerformanceScope)}>
@@ -197,25 +212,25 @@ export function CohortValidationTable() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">A + B combined</SelectItem>
-              <SelectItem value="A">Sequence A</SelectItem>
-              <SelectItem value="B">Sequence B</SelectItem>
+              {hasBoth && <SelectItem value="all">A + B combined</SelectItem>}
+              {hasA && <SelectItem value="A">Sequence A</SelectItem>}
+              {hasB && <SelectItem value="B">Sequence B</SelectItem>}
             </SelectContent>
           </Select>
         </div>
 
-        <OverallOutcomesChart scope={performanceScope} />
-        <StepPerformanceTable scope={performanceScope} />
+        <OverallOutcomesChart scope={performanceScope} data={outcomeData} launched={launchedCount} />
+        <StepPerformanceTable scope={performanceScope} rows={stepRows} launched={launchedCount} />
 
         <section className="rounded-2xl border-2 border-primary/50 bg-background p-5 shadow-sm">
           <div className="flex flex-wrap items-start gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-primary">Prediction validation by cohort</h2>
-                <InfoPopover label="This table validates lemScore on business outcomes only. Each percentage uses the score cohort size n as its denominator. Delivery, opens and channel engagement are assessed separately in Step results because not every prospect reaches every automated step." />
+                <InfoPopover label="Cohorts are built only from prospects that were actually launched with a lemScore snapshot frozen before sending. No unlaunched A/B variant is injected into this table." />
               </div>
               <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-                Do higher pre-send score bands produce more positive replies, meetings, opportunities and wins? These outcomes use the cohort size as one common base.
+                Check whether higher pre-send score bands actually produced stronger replies, meetings and downstream outcomes.
               </p>
             </div>
             <div className="ml-auto flex flex-wrap gap-2">
@@ -224,10 +239,10 @@ export function CohortValidationTable() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">A + B combined</SelectItem>
-                  <SelectItem value="split">Split A/B</SelectItem>
-                  <SelectItem value="A">Sequence A only</SelectItem>
-                  <SelectItem value="B">Sequence B only</SelectItem>
+                  {hasBoth && <SelectItem value="all">A + B combined</SelectItem>}
+                  {hasBoth && <SelectItem value="split">Split A/B</SelectItem>}
+                  {hasA && <SelectItem value="A">Sequence A only</SelectItem>}
+                  {hasB && <SelectItem value="B">Sequence B only</SelectItem>}
                 </SelectContent>
               </Select>
               <Select value={preset} onValueChange={(value) => setPreset(value as CohortPreset)}>
@@ -243,50 +258,59 @@ export function CohortValidationTable() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-lg border border-success/30 bg-success-soft px-3 py-2 text-xs font-medium text-success">
-            Demo takeaway: higher pre-send score cohorts consistently generate stronger downstream outcomes.
-          </div>
+          {frozenCount === 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-border bg-surface p-5 text-sm text-muted-foreground">
+              No pre-send lemScore snapshot exists for the prospects already launched. Activate lemScore before the next launch to validate predictions by cohort.
+            </div>
+          ) : cohortRows.length ? (
+            <>
+              <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+                <table className="w-full min-w-[780px] border-collapse text-left text-xs">
+                  <thead className="bg-surface text-[10px] tracking-wide text-muted-foreground uppercase">
+                    <tr>
+                      <CohortHead>Launch score</CohortHead>
+                      <CohortHead>n</CohortHead>
+                      <CohortHead>Mean</CohortHead>
+                      <CohortHead>Positive replies</CohortHead>
+                      <CohortHead>Meetings</CohortHead>
+                      <CohortHead>Opportunities</CohortHead>
+                      <CohortHead>Won</CohortHead>
+                      <CohortHead>Lost</CohortHead>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cohortRows.map((row) => (
+                      <tr key={row.key} className="border-t border-border bg-card align-top">
+                        <td className="whitespace-nowrap px-3 py-3 font-semibold">{row.label}</td>
+                        <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
+                        <td className="px-3 py-3 tabular-nums">{row.average}</td>
+                        <RateCell count={row.positiveReply} denominator={row.total} metric="positiveReply" />
+                        <RateCell count={row.meeting} denominator={row.total} metric="meeting" />
+                        <RateCell count={row.opportunity} denominator={row.total} metric="opportunity" />
+                        <RateCell count={row.closedWon} denominator={row.total} metric="closedWon" />
+                        <RateCell count={row.closedLost} denominator={row.total} metric="closedLost" />
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          <div className="mt-4 overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[780px] border-collapse text-left text-xs">
-              <thead className="bg-surface text-[10px] tracking-wide text-muted-foreground uppercase">
-                <tr>
-                  <CohortHead>Launch score</CohortHead>
-                  <CohortHead>n</CohortHead>
-                  <CohortHead>Mean</CohortHead>
-                  <CohortHead>Positive replies</CohortHead>
-                  <CohortHead>Meetings</CohortHead>
-                  <CohortHead>Opportunities</CohortHead>
-                  <CohortHead>Won</CohortHead>
-                  <CohortHead>Lost</CohortHead>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.key} className="border-t border-border bg-card align-top">
-                    <td className="whitespace-nowrap px-3 py-3 font-semibold">{row.label}</td>
-                    <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
-                    <td className="px-3 py-3 tabular-nums">{row.average ?? "—"}</td>
-                    <RateCell count={row.positiveReply} denominator={row.total} metric="positiveReply" />
-                    <RateCell count={row.meeting} denominator={row.total} metric="meeting" />
-                    <RateCell count={row.opportunity} denominator={row.total} metric="opportunity" />
-                    <RateCell count={row.closedWon} denominator={row.total} metric="closedWon" />
-                    <RateCell count={row.closedLost} denominator={row.total} metric="closedLost" />
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="font-semibold text-foreground">Base = prospects actually launched in each score cohort (n)</span>
+                <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">Strong</span>
+                <span className="rounded-md bg-warning-soft px-2 py-0.5 font-semibold text-warning">Medium</span>
+                <span className="rounded-md bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">Weak</span>
+                <span>Won: higher is better · Lost: lower is better.</span>
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-border bg-surface p-5 text-sm text-muted-foreground">
+              No launched prospects fall inside the selected score bands and A/B scope.
+            </div>
+          )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="font-semibold text-foreground">Base = prospects in each score cohort (n)</span>
-            <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">Strong</span>
-            <span className="rounded-md bg-warning-soft px-2 py-0.5 font-semibold text-warning">Medium</span>
-            <span className="rounded-md bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">Weak</span>
-            <span>Won: higher is better · Lost: lower is better.</span>
-          </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Demo data only. Step-level metrics are deliberately kept out of this validation table so a strong early message is not penalized simply because fewer prospects need later steps. Closed Won is a downstream business outcome and is also influenced by sales execution and product fit.
+            Beta simulation only. Scores are frozen at launch so later edits cannot rewrite the prediction that is being validated.
           </p>
         </section>
       </div>
@@ -294,9 +318,17 @@ export function CohortValidationTable() {
   );
 }
 
-function OverallOutcomesChart({ scope }: { scope: PerformanceScope }) {
-  const data = OVERALL_OUTCOMES[scope];
+function OverallOutcomesChart({
+  scope,
+  data,
+  launched,
+}: {
+  scope: PerformanceScope;
+  data: OutcomePoint[];
+  launched: number;
+}) {
   const scopeText = performanceScopeLabel(scope);
+  const yMax = Math.max(10, Math.ceil(Math.max(...data.map((point) => point.current), 8) + 2));
 
   return (
     <section className="rounded-2xl border border-border bg-background p-5 shadow-sm">
@@ -305,10 +337,10 @@ function OverallOutcomesChart({ scope }: { scope: PerformanceScope }) {
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold">Overall outcomes vs benchmark</h2>
             <span className="rounded-full border border-primary/25 bg-primary/[0.04] px-2 py-0.5 text-[11px] font-semibold text-primary">{scopeText}</span>
-            <InfoPopover label="Overall business outcomes always use the prospects launched at the start of the selected A/B scope as the denominator. It does not matter whether a prospect replied by email, LinkedIn or after a follow-up." />
+            <InfoPopover label="Overall business outcomes use only prospects actually launched in the selected A/B scope." />
           </div>
           <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-            {scopeText} vs comparable historical lemlist campaigns. Every percentage is based on the initial launched prospects in this scope.
+            {scopeText} vs comparable historical lemlist campaigns. Every current percentage uses the {launched} actually launched prospects in this scope.
           </p>
         </div>
         <DemoBadge className="ml-auto" />
@@ -320,7 +352,7 @@ function OverallOutcomesChart({ scope }: { scope: PerformanceScope }) {
             <LineChart data={data} margin={{ top: 12, right: 18, left: 0, bottom: 18 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis dataKey="stage" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={{ stroke: "var(--border)" }} tickLine={false} interval={0} />
-              <YAxis domain={[0, 11]} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={40} />
+              <YAxis domain={[0, yMax]} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={40} />
               <RechartsTooltip
                 formatter={(value, name) => [
                   `${Number(value).toFixed(1)}% of launched prospects`,
@@ -337,18 +369,24 @@ function OverallOutcomesChart({ scope }: { scope: PerformanceScope }) {
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-        Base = {LAUNCHED_PROSPECTS[scope]} launched prospects in {scopeText}. A prospect counts in the outcome regardless of which message or channel produced it. Closed Won is also influenced by sales execution and product fit, so it should be read as a final business outcome rather than a pure outreach-quality metric.
+        Base = {launched} actually launched prospects in {scopeText}. Closed Won remains a downstream outcome influenced by sales execution and product fit.
       </p>
     </section>
   );
 }
 
-function StepPerformanceTable({ scope }: { scope: PerformanceScope }) {
-  const rows = STEP_PERFORMANCE[scope];
-  const launched = LAUNCHED_PROSPECTS[scope];
+function StepPerformanceTable({
+  scope,
+  rows,
+  launched,
+}: {
+  scope: PerformanceScope;
+  rows: StepPerformance[];
+  launched: number;
+}) {
   const scopeText = performanceScopeLabel(scope);
-  const example = rows.find((row) => row.step === "LinkedIn message") ?? rows[0]!;
-  const exampleShare = (example.reached / launched) * 100;
+  const example = rows.find((row) => row.step === "LinkedIn message" && row.reached > 0) ?? rows[0]!;
+  const exampleShare = launched ? (example.reached / launched) * 100 : 0;
 
   return (
     <section className="rounded-2xl border border-border bg-background p-5 shadow-sm">
@@ -357,10 +395,10 @@ function StepPerformanceTable({ scope }: { scope: PerformanceScope }) {
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold">Step results vs benchmark</h2>
             <span className="rounded-full border border-primary/25 bg-primary/[0.04] px-2 py-0.5 text-[11px] font-semibold text-primary">{scopeText}</span>
-            <InfoPopover label="Exposed share tells you how much of the launched audience in the selected A/B scope actually reached the step. The current result is then calculated only among those exposed prospects, so later steps are not penalized when earlier steps already converted or stopped some prospects." />
+            <InfoPopover label="The exposed counts are scoped to the prospects actually launched in this A/B variant. Later steps naturally contain fewer prospects because replies and conditions can stop a sequence earlier." />
           </div>
           <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-            See exactly what happened at each touch for {scopeText}, among the prospects who actually reached it.
+            See what happened at each touch for the launched prospects in {scopeText}.
           </p>
         </div>
         <DemoBadge className="ml-auto" />
@@ -382,7 +420,7 @@ function StepPerformanceTable({ scope }: { scope: PerformanceScope }) {
           <tbody>
             {rows.map((row) => {
               const delta = row.current - row.historical;
-              const exposedShare = (row.reached / launched) * 100;
+              const exposedShare = launched ? (row.reached / launched) * 100 : 0;
               const resultLabel = row.metric.toLowerCase();
               return (
                 <tr key={row.step} className="border-t border-border bg-card">
@@ -405,7 +443,7 @@ function StepPerformanceTable({ scope }: { scope: PerformanceScope }) {
       </div>
 
       <div className="mt-3 rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-        <strong className="text-foreground">How to read it:</strong> In {scopeText}, {example.step} reached {example.reached} of the {launched} launched prospects ({exampleShare.toFixed(1)}%). Among those {example.reached} exposed prospects, {example.current.toFixed(1)}% {example.metric.toLowerCase()}. The historical benchmark for the same result is {example.historical.toFixed(1)}%. Sample size is dynamic: n = prospects exposed to each step.
+        <strong className="text-foreground">How to read it:</strong> In {scopeText}, {example.step} reached {example.reached} of the {launched} launched prospects ({exampleShare.toFixed(1)}%). Among those exposed prospects, {example.current.toFixed(1)}% {example.metric.toLowerCase()}.
       </div>
     </section>
   );
