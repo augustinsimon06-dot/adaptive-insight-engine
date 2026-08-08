@@ -17,7 +17,7 @@ import { useLemScore } from "@/lib/lemscore/store";
 import { scoreBand } from "@/lib/lemscore/scoring";
 import { prospects as allProspects } from "@/lib/lemscore/data";
 import type { Prospect } from "@/lib/lemscore/types";
-import { DemoBadge, InfoPopover, ScorePill, bandWord } from "./shared";
+import { DemoBadge, InfoPopover, ScorePill, bandWord, formatCount } from "./shared";
 import { FactorRow } from "./score-panel";
 
 const PAGE_SIZE = 15;
