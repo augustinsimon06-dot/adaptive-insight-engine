@@ -179,8 +179,10 @@
   }
 }
 
-/* Performance overview: remove the obsolete Sequence A/B lemScore tracking cards.
-   The cohort score-band table below it stays visible. */
-main > section:has(> div.flex.flex-wrap.items-center.gap-2 > div > h2.text-primary) {
+/* Performance overview: hide the legacy score-tracking cards and the previous
+   expected-vs-actual cohort table. The client-facing cohort table is rendered
+   separately with colours based on real absolute performance. */
+main > section:has(> div.flex.flex-wrap.items-center.gap-2 > div > h2.text-primary),
+main > section:has(> div.flex.flex-wrap.items-start.gap-3) {
   display: none;
 }
