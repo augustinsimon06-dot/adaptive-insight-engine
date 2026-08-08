@@ -6,7 +6,14 @@ import { bandLabel } from "@/lib/lemscore/scoring";
 import { useLemScore } from "@/lib/lemscore/store";
 import type { ScoreFactor, SequenceStep } from "@/lib/lemscore/types";
 import { cn } from "@/lib/utils";
-import { DemoBadge, InfoPopover, ScorePill, bandClasses } from "./shared";
+import {
+  DemoBadge,
+  InfoPopover,
+  ScorePill,
+  bandClasses,
+  bandFrameClasses,
+  formatCount,
+} from "./shared";
 
 export function ScorePanel({
   step,
