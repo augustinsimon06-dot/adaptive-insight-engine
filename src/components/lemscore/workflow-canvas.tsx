@@ -168,7 +168,7 @@ export function WorkflowCanvas({
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 px-3 py-3">
+                <div className={cn("flex gap-3 px-3 py-3", showContent ? "items-start" : "items-center")}>
                   <span
                     className={cn(
                       "grid h-9 w-9 shrink-0 place-items-center rounded-lg",
@@ -189,13 +189,31 @@ export function WorkflowCanvas({
                         </span>
                       )}
                     </div>
-                    {showContent && step.subject && (
-                      <p className="mt-1 truncate text-xs font-medium">{step.subject}</p>
-                    )}
-                    {showContent && step.body && (
-                      <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-                        {step.body}
-                      </p>
+                    {showContent && step.hasContent ? (
+                      <div className="mt-2 rounded-lg border border-border bg-surface/40 p-3">
+                        {step.channel === "email" && step.subject && (
+                          <p className="text-xs font-medium text-foreground">
+                            <span className="mr-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                              Subject
+                            </span>
+                            {step.subject}
+                          </p>
+                        )}
+                        {step.body && (
+                          <p className="mt-2 whitespace-pre-line text-[11px] leading-relaxed text-muted-foreground">
+                            {step.body}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        {step.subject && <p className="mt-1 truncate text-xs font-medium">{step.subject}</p>}
+                        {step.body && (
+                          <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+                            {step.body}
+                          </p>
+                        )}
+                      </>
                     )}
                     {!step.hasContent && (
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
