@@ -629,7 +629,23 @@ function LaunchCohortValidation({
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">Colour = actual vs expected</span>
+        <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">
+          Above expectation
+        </span>
+        <span className="rounded-md bg-warning-soft px-2 py-0.5 font-semibold text-warning">
+          As expected
+        </span>
+        <span className="rounded-md bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">
+          Below expectation
+        </span>
+        <span>
+          Values stay absolute. A 90–100 band can be red when its results fall short of what that
+          score predicted; Lost is inverted (fewer losses than expected is green).
+        </span>
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         Beta interpretation: this is predictive validation, not causal proof. Compare bands only
         when their samples are large enough; otherwise use the trend as directional evidence.
       </p>
