@@ -115,7 +115,7 @@ type Store = Persisted & {
   ) => ReturnType<typeof recalibrateAfterOutcomes> & {
     snapshot: ScoreSnapshot | null;
   };
-  launch: (prospectIds?: string[]) => void;
+  launch: (prospectIds?: string[], nextTab?: Persisted["mainTab"]) => void;
   minOutcomes: number;
 };
 
@@ -289,9 +289,12 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
   );
 
   const launch = useCallback(
-    (prospectIds?: string[]) => {
+    (prospectIds?: string[], nextTab: Persisted["mainTab"] = "performance") => {
       const selectedIds = prospectIds ?? state.launchSelection;
-      const launchList = activeProspects.filter((prospect) => selectedIds.includes(prospect.id));
+      const launchList = activeProspects.filter(
+        (prospect) =>
+          selectedIds.includes(prospect.id) && !state.launchedProspectIds.includes(prospect.id),
+      );
       if (!launchList.length) return;
       const snapshots: Record<string, ScoreSnapshot> = {};
       const capturedAt = new Date().toISOString();
@@ -329,17 +332,20 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
           capturedAt,
         };
       });
+      const newlyLaunchedIds = launchList.map((prospect) => prospect.id);
       setState((prev) => ({
         ...prev,
         launched: true,
-        launchedAt: capturedAt,
-        launchSelection: launchList.map((prospect) => prospect.id),
-        launchedProspectIds: launchList.map((prospect) => prospect.id),
-        snapshots,
-        mainTab: "performance",
+        launchedAt: prev.launchedAt ?? capturedAt,
+        launchSelection: prev.launchSelection.filter((id) => !newlyLaunchedIds.includes(id)),
+        launchedProspectIds: Array.from(
+          new Set([...prev.launchedProspectIds, ...newlyLaunchedIds]),
+        ),
+        snapshots: { ...prev.snapshots, ...snapshots },
+        mainTab: nextTab,
       }));
     },
-    [steps, activeProspects, state.launchSelection],
+    [steps, activeProspects, state.launchSelection, state.launchedProspectIds],
   );
 
   const value = useMemo<Store>(
