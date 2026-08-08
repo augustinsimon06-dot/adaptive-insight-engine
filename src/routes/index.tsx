@@ -49,9 +49,10 @@ function Index() {
 
 function Screens() {
   const { mainTab, lemScoreEnabled, lemScoreEntitled } = useLemScore();
-  if (mainTab === "sequence") return <SequenceScreen />;
-  if (mainTab === "prospects") return <ProspectListScreen />;
-  if (mainTab === "launch") return <LaunchScreen />;
+  const activeTab = mainTab as string;
+  if (activeTab === "sequence" || activeTab === "icp") return <SequenceScreen />;
+  if (activeTab === "prospects") return <ProspectListScreen />;
+  if (activeTab === "launch") return <LaunchScreen />;
   return (
     <>
       <PerformanceScreen />
