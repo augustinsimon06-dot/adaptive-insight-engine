@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { channelLabel } from "@/lib/lemscore/benchmarks";
+import { getIcpState, icpLabel } from "@/lib/lemscore/icp";
 import { useLemScore } from "@/lib/lemscore/store";
 import type { SequenceStep, VariantId } from "@/lib/lemscore/types";
 import { MessagePreviewDialog } from "./message-preview-dialog";
@@ -25,6 +26,7 @@ export function SequenceScreen() {
     setStepContent,
     prospectsFor,
   } = store;
+  const icp = getIcpState();
   const variantSteps = steps(selectedVariant);
   const selected = variantSteps.find((s) => s.id === selectedStepId) ?? variantSteps[0]!;
 
@@ -100,13 +102,26 @@ export function SequenceScreen() {
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/[0.035] px-6 py-2 text-xs">
+        <span className="font-medium text-muted-foreground">Scoring against confirmed ICP:</span>
+        <strong className="text-foreground">{icpLabel(icp.context)}</strong>
+        <span className="text-muted-foreground">· {icp.context.geography}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto h-7 px-2 text-xs text-primary"
+          onClick={() => update({ mainTab: "icp" as never })}
+        >
+          Edit ICP
+        </Button>
+      </div>
+
       <div
         className={cn(
           "grid min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[390px_360px_minmax(0,1fr)]",
           !panelOpen && "xl:grid-cols-[390px_minmax(0,1fr)]",
         )}
       >
-        {/* Canvas */}
         <WorkflowCanvas
           variant={selectedVariant}
           steps={variantSteps}
@@ -122,7 +137,6 @@ export function SequenceScreen() {
           }
         />
 
-        {/* lemScore panel (desktop) */}
         {panelOpen && selected.hasContent && (
           <div className="hidden min-h-0 overflow-hidden xl:block">
             <ScorePanel
@@ -139,7 +153,6 @@ export function SequenceScreen() {
           </div>
         )}
 
-        {/* Editor */}
         <div className="min-h-0 min-w-0 overflow-y-auto p-6">
           <div className="mx-auto max-w-3xl space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -211,9 +224,9 @@ export function SequenceScreen() {
                   className="mt-1 font-normal leading-relaxed"
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  lemScore evaluates this exact message in its channel, position and timing context.
-                  Individual prospect fit is calculated separately in Prospect list. It never edits
-                  your copy.
+                  lemScore evaluates this exact message against the confirmed Campaign ICP, plus its
+                  channel, position and timing context. Individual prospect fit is calculated
+                  separately in Prospect list. It never edits your copy.
                 </p>
               </div>
             ) : (
