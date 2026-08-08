@@ -149,7 +149,7 @@ export type ScoreResult = {
   score: number;
   band: ScoreBand;
   validity: ScoreValidity;
-  validityReason?: string;
+  validityReason?: string | undefined;
   audienceSize: number;
   prediction: Prediction;
   confidence: Confidence;
