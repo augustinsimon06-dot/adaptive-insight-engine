@@ -36,6 +36,8 @@ type Persisted = {
   selectedVariant: VariantId;
   selectedStepId: string;
   panelOpen: boolean;
+  lemScoreEntitled: boolean;
+  lemScoreEnabled: boolean;
   excluded: string[];
   moved: Record<string, string>;
   filters: Filters;
@@ -53,7 +55,10 @@ const defaultState: Persisted = {
   content: {},
   selectedVariant: "A",
   selectedStepId: "A1",
-  panelOpen: true,
+  panelOpen: false,
+  // Demo account = subscribed. Set this to false to preview the non-subscriber paywall state.
+  lemScoreEntitled: true,
+  lemScoreEnabled: false,
   excluded: [],
   moved: {},
   filters: { search: "", band: "all", variant: "all", persona: "all", channel: "all" },
@@ -298,40 +303,45 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
       if (!launchList.length) return;
       const snapshots: Record<string, ScoreSnapshot> = {};
       const capturedAt = new Date().toISOString();
-      (["A", "B"] as VariantId[]).forEach((variant) => {
-        const variantSteps = steps(variant);
-        const list = launchList.filter((prospect) => prospect.variant === variant);
-        variantSteps
-          .filter((s) => s.hasContent)
-          .forEach((s) => {
-            const r = aggregateMessageScore(s, list);
-            snapshots[s.id] = {
-              score: r.score,
-              predictedPositiveRate: r.prediction.positiveReplyRate,
-              predictedOpportunityRate: r.prediction.opportunityRate,
-              confidence: r.confidence,
-              capturedAt,
-            };
-          });
-        const sequenceResult = aggregateVariantSequenceScore(variantSteps, list);
-        snapshots[`variant:${variant}`] = {
-          score: sequenceResult.score,
-          predictedPositiveRate: sequenceResult.prediction.positiveReplyRate,
-          predictedOpportunityRate: sequenceResult.prediction.opportunityRate,
-          confidence: sequenceResult.confidence,
-          capturedAt,
-        };
-      });
-      launchList.forEach((prospect) => {
-        const result = aggregateProspectSequenceScore(steps(prospect.variant), prospect);
-        snapshots[`prospect:${prospect.id}`] = {
-          score: result.score,
-          predictedPositiveRate: result.prediction.positiveReplyRate,
-          predictedOpportunityRate: result.prediction.opportunityRate,
-          confidence: result.confidence,
-          capturedAt,
-        };
-      });
+      const shouldCaptureLemScore = state.lemScoreEntitled && state.lemScoreEnabled;
+
+      if (shouldCaptureLemScore) {
+        (["A", "B"] as VariantId[]).forEach((variant) => {
+          const variantSteps = steps(variant);
+          const list = launchList.filter((prospect) => prospect.variant === variant);
+          variantSteps
+            .filter((s) => s.hasContent)
+            .forEach((s) => {
+              const r = aggregateMessageScore(s, list);
+              snapshots[s.id] = {
+                score: r.score,
+                predictedPositiveRate: r.prediction.positiveReplyRate,
+                predictedOpportunityRate: r.prediction.opportunityRate,
+                confidence: r.confidence,
+                capturedAt,
+              };
+            });
+          const sequenceResult = aggregateVariantSequenceScore(variantSteps, list);
+          snapshots[`variant:${variant}`] = {
+            score: sequenceResult.score,
+            predictedPositiveRate: sequenceResult.prediction.positiveReplyRate,
+            predictedOpportunityRate: sequenceResult.prediction.opportunityRate,
+            confidence: sequenceResult.confidence,
+            capturedAt,
+          };
+        });
+        launchList.forEach((prospect) => {
+          const result = aggregateProspectSequenceScore(steps(prospect.variant), prospect);
+          snapshots[`prospect:${prospect.id}`] = {
+            score: result.score,
+            predictedPositiveRate: result.prediction.positiveReplyRate,
+            predictedOpportunityRate: result.prediction.opportunityRate,
+            confidence: result.confidence,
+            capturedAt,
+          };
+        });
+      }
+
       const newlyLaunchedIds = launchList.map((prospect) => prospect.id);
       setState((prev) => ({
         ...prev,
@@ -345,7 +355,14 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
         mainTab: nextTab,
       }));
     },
-    [steps, activeProspects, state.launchSelection, state.launchedProspectIds],
+    [
+      steps,
+      activeProspects,
+      state.launchSelection,
+      state.launchedProspectIds,
+      state.lemScoreEntitled,
+      state.lemScoreEnabled,
+    ],
   );
 
   const value = useMemo<Store>(
