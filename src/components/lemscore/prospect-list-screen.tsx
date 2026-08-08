@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Rocket, Search } from "lucide-react";
+import { Rocket, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,7 +32,10 @@ export function ProspectListScreen() {
     moved,
     launchedProspectIds,
     launch,
+    lemScoreEnabled,
+    lemScoreEntitled,
   } = useLemScore();
+  const lemScoreActive = lemScoreEnabled && lemScoreEntitled;
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -47,14 +50,14 @@ export function ProspectListScreen() {
     }
     if (filters.variant !== "all") list = list.filter(({ p }) => p.variant === filters.variant);
     if (filters.persona !== "all") list = list.filter(({ p }) => p.jobTitle === filters.persona);
-    if (filters.band !== "all")
+    if (lemScoreActive && filters.band !== "all")
       list = list.filter(({ result }) => scoreBand(result.score) === filters.band);
-    if (sortDir)
+    if (lemScoreActive && sortDir)
       list = [...list].sort((a, b) =>
         sortDir === "asc" ? a.result.score - b.result.score : b.result.score - a.result.score,
       );
     return list;
-  }, [filters, sortDir, prospectScore]);
+  }, [filters, sortDir, prospectScore, lemScoreActive]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = rows.slice(
@@ -97,6 +100,16 @@ export function ProspectListScreen() {
         <InfoPopover label="Launch applies only to checked prospects that have not already started and are not excluded or moved. Unchecked prospects stay in the campaign as Not started." />
       </div>
 
+      {!lemScoreActive && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
+          <Sparkles className="h-4 w-4" />
+          <span>
+            Activez lemScore dans Sequence pour afficher la prédiction individuelle de compatibilité
+            entre cette séquence et chaque prospect présélectionné.
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
         <div className="relative">
           <Search
@@ -114,17 +127,19 @@ export function ProspectListScreen() {
             className="w-56 pl-8"
           />
         </div>
-        <FilterSelect
-          label="Score band"
-          value={filters.band}
-          onChange={(v) => update({ filters: { ...filters, band: v as typeof filters.band } })}
-          options={[
-            ["all", "All scores"],
-            ["strong", "Strong (80–100)"],
-            ["medium", "Medium (60–79)"],
-            ["weak", "Weak (0–59)"],
-          ]}
-        />
+        {lemScoreActive && (
+          <FilterSelect
+            label="Score band"
+            value={filters.band}
+            onChange={(v) => update({ filters: { ...filters, band: v as typeof filters.band } })}
+            options={[
+              ["all", "All scores"],
+              ["strong", "Strong (80–100)"],
+              ["medium", "Medium (60–79)"],
+              ["weak", "Weak (0–59)"],
+            ]}
+          />
+        )}
         <FilterSelect
           label="Variant"
           value={filters.variant}
@@ -143,14 +158,16 @@ export function ProspectListScreen() {
           onChange={(v) => update({ filters: { ...filters, persona: v } })}
           options={[["all", "All personas"], ...personas.map((p) => [p, p] as [string, string])]}
         />
-        <Button
-          variant="outline"
-          size="sm"
-          className="ml-auto"
-          onClick={() => update({ sortDir: sortDir === "desc" ? "asc" : "desc" })}
-        >
-          Sort by lemScore {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : ""}
-        </Button>
+        {lemScoreActive && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            onClick={() => update({ sortDir: sortDir === "desc" ? "asc" : "desc" })}
+          >
+            Sort by lemScore {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : ""}
+          </Button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card">
@@ -173,7 +190,7 @@ export function ProspectListScreen() {
                 />
               </th>
               <th className="px-3 py-2.5 font-medium">Name</th>
-              <th className="px-3 py-2.5 font-medium">lemScore</th>
+              {lemScoreActive && <th className="px-3 py-2.5 font-medium">lemScore</th>}
               <th className="px-3 py-2.5 font-medium">Variant</th>
               <th className="px-3 py-2.5 font-medium">Company</th>
               <th className="px-3 py-2.5 font-medium">Job title</th>
@@ -198,16 +215,18 @@ export function ProspectListScreen() {
                   />
                 </td>
                 <td className="px-3 py-2 font-medium whitespace-nowrap">{p.name}</td>
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => setOpenId(p.id)}
-                    className="rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                    aria-label={`Explain lemScore ${result.score} for ${p.name}`}
-                  >
-                    <ScorePill score={result.score} validity={result.validity} suffix={false} />
-                  </button>
-                </td>
+                {lemScoreActive && (
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(p.id)}
+                      className="rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      aria-label={`Explain lemScore ${result.score} for ${p.name}`}
+                    >
+                      <ScorePill score={result.score} validity={result.validity} suffix={false} />
+                    </button>
+                  </td>
+                )}
                 <td className="px-3 py-2">{p.variant}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{p.company}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{p.jobTitle}</td>
@@ -272,7 +291,7 @@ export function ProspectListScreen() {
         </Button>
       </div>
 
-      <ProspectDrawer id={openId} onClose={() => setOpenId(null)} />
+      {lemScoreActive && <ProspectDrawer id={openId} onClose={() => setOpenId(null)} />}
     </div>
   );
 }
