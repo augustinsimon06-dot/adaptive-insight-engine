@@ -23,10 +23,6 @@ import { DemoBadge, InfoPopover } from "./shared";
 type CohortView = "all" | VariantId | "split";
 type CohortPreset = "standard" | "detailed";
 type CohortMetric =
-  | "delivered"
-  | "opened"
-  | "clicked"
-  | "linkedinEngaged"
   | "positiveReply"
   | "meeting"
   | "opportunity"
@@ -40,10 +36,6 @@ type DemoCohortSeed = {
   max: number;
   total: number;
   average: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  linkedinEngaged: number;
   positiveReply: number;
   meeting: number;
   opportunity: number;
@@ -51,40 +43,153 @@ type DemoCohortSeed = {
   closedLost: number;
 };
 
-type PathwayPoint = {
+type OutcomePoint = {
   stage: string;
   historical: number;
   current: number;
 };
 
-const PATHWAY_BENCHMARK: PathwayPoint[] = [
-  { stage: "Contacted", historical: 100, current: 100 },
-  { stage: "Delivered", historical: 96.4, current: 97.2 },
-  { stage: "Opened", historical: 57.6, current: 64.2 },
-  { stage: "Clicked", historical: 12.2, current: 15.0 },
-  { stage: "LinkedIn", historical: 9.8, current: 12.6 },
+type StepPerformance = {
+  step: string;
+  metric: string;
+  reached: number;
+  historical: number;
+  current: number;
+};
+
+const OVERALL_OUTCOMES: OutcomePoint[] = [
   { stage: "Positive reply", historical: 6.9, current: 8.8 },
   { stage: "Meeting", historical: 3.0, current: 4.4 },
   { stage: "Opportunity", historical: 1.7, current: 2.8 },
   { stage: "Won", historical: 0.6, current: 1.2 },
 ];
 
+const STEP_PERFORMANCE: StepPerformance[] = [
+  { step: "Email #1", metric: "Open rate", reached: 164, historical: 58.4, current: 66.5 },
+  {
+    step: "LinkedIn message",
+    metric: "Engagement rate",
+    reached: 108,
+    historical: 20.6,
+    current: 25.0,
+  },
+  {
+    step: "Follow-up email",
+    metric: "Open rate",
+    reached: 71,
+    historical: 47.8,
+    current: 53.5,
+  },
+];
+
 const DEMO_COHORTS: DemoCohortSeed[] = [
-  { variant: "A", label: "90–100", min: 90, max: 100, total: 160, average: 93, delivered: 157, opened: 118, clicked: 30, linkedinEngaged: 43, positiveReply: 19, meeting: 12, opportunity: 8, closedWon: 5, closedLost: 2 },
-  { variant: "A", label: "80–89", min: 80, max: 89, total: 220, average: 84, delivered: 214, opened: 148, clicked: 34, linkedinEngaged: 50, positiveReply: 20, meeting: 13, opportunity: 9, closedWon: 5, closedLost: 4 },
-  { variant: "A", label: "60–79", min: 60, max: 79, total: 260, average: 69, delivered: 246, opened: 139, clicked: 27, linkedinEngaged: 45, positiveReply: 16, meeting: 9, opportunity: 6, closedWon: 2, closedLost: 7 },
-  { variant: "A", label: "Below 60", min: 0, max: 59, total: 200, average: 51, delivered: 184, opened: 81, clicked: 12, linkedinEngaged: 20, positiveReply: 6, meeting: 2, opportunity: 1, closedWon: 0, closedLost: 6 },
-  { variant: "B", label: "90–100", min: 90, max: 100, total: 120, average: 92, delivered: 117, opened: 85, clicked: 21, linkedinEngaged: 30, positiveReply: 12, meeting: 7, opportunity: 5, closedWon: 3, closedLost: 1 },
-  { variant: "B", label: "80–89", min: 80, max: 89, total: 180, average: 83, delivered: 174, opened: 115, clicked: 25, linkedinEngaged: 37, positiveReply: 14, meeting: 8, opportunity: 5, closedWon: 3, closedLost: 3 },
-  { variant: "B", label: "60–79", min: 60, max: 79, total: 240, average: 68, delivered: 226, opened: 121, clicked: 21, linkedinEngaged: 34, positiveReply: 12, meeting: 6, opportunity: 3, closedWon: 1, closedLost: 6 },
-  { variant: "B", label: "Below 60", min: 0, max: 59, total: 170, average: 50, delivered: 155, opened: 65, clicked: 9, linkedinEngaged: 16, positiveReply: 4, meeting: 1, opportunity: 0, closedWon: 0, closedLost: 6 },
+  {
+    variant: "A",
+    label: "90–100",
+    min: 90,
+    max: 100,
+    total: 160,
+    average: 93,
+    positiveReply: 19,
+    meeting: 12,
+    opportunity: 8,
+    closedWon: 5,
+    closedLost: 2,
+  },
+  {
+    variant: "A",
+    label: "80–89",
+    min: 80,
+    max: 89,
+    total: 220,
+    average: 84,
+    positiveReply: 20,
+    meeting: 13,
+    opportunity: 9,
+    closedWon: 5,
+    closedLost: 4,
+  },
+  {
+    variant: "A",
+    label: "60–79",
+    min: 60,
+    max: 79,
+    total: 260,
+    average: 69,
+    positiveReply: 16,
+    meeting: 9,
+    opportunity: 6,
+    closedWon: 2,
+    closedLost: 7,
+  },
+  {
+    variant: "A",
+    label: "Below 60",
+    min: 0,
+    max: 59,
+    total: 200,
+    average: 51,
+    positiveReply: 6,
+    meeting: 2,
+    opportunity: 1,
+    closedWon: 0,
+    closedLost: 6,
+  },
+  {
+    variant: "B",
+    label: "90–100",
+    min: 90,
+    max: 100,
+    total: 120,
+    average: 92,
+    positiveReply: 12,
+    meeting: 7,
+    opportunity: 5,
+    closedWon: 3,
+    closedLost: 1,
+  },
+  {
+    variant: "B",
+    label: "80–89",
+    min: 80,
+    max: 89,
+    total: 180,
+    average: 83,
+    positiveReply: 14,
+    meeting: 8,
+    opportunity: 5,
+    closedWon: 3,
+    closedLost: 3,
+  },
+  {
+    variant: "B",
+    label: "60–79",
+    min: 60,
+    max: 79,
+    total: 240,
+    average: 68,
+    positiveReply: 12,
+    meeting: 6,
+    opportunity: 3,
+    closedWon: 1,
+    closedLost: 6,
+  },
+  {
+    variant: "B",
+    label: "Below 60",
+    min: 0,
+    max: 59,
+    total: 170,
+    average: 50,
+    positiveReply: 4,
+    meeting: 1,
+    opportunity: 0,
+    closedWon: 0,
+    closedLost: 6,
+  },
 ];
 
 const THRESHOLDS: Record<CohortMetric, { good: number; medium: number }> = {
-  delivered: { good: 97, medium: 94 },
-  opened: { good: 60, medium: 45 },
-  clicked: { good: 13, medium: 8 },
-  linkedinEngaged: { good: 20, medium: 14 },
   positiveReply: { good: 8, medium: 5 },
   meeting: { good: 5, medium: 2.5 },
   opportunity: { good: 3, medium: 1.5 },
@@ -132,10 +237,6 @@ export function CohortValidationTable() {
               members.reduce((score, item) => score + item.average * item.total, 0) / total,
             )
           : null,
-        delivered: sum(members, "delivered"),
-        opened: sum(members, "opened"),
-        clicked: sum(members, "clicked"),
-        linkedinEngaged: sum(members, "linkedinEngaged"),
         positiveReply: sum(members, "positiveReply"),
         meeting: sum(members, "meeting"),
         opportunity: sum(members, "opportunity"),
@@ -149,7 +250,8 @@ export function CohortValidationTable() {
     <div className="grid bg-surface lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="hidden border-r border-border bg-background lg:block" aria-hidden="true" />
       <div className="space-y-5 px-6 pb-6">
-        <PathwayBenchmarkChart />
+        <OverallOutcomesChart />
+        <StepPerformanceTable />
 
         <section className="rounded-2xl border-2 border-primary/50 bg-background p-5 shadow-sm">
           <div className="flex flex-wrap items-start gap-3">
@@ -158,12 +260,11 @@ export function CohortValidationTable() {
                 <h2 className="text-base font-semibold text-primary">
                   Prediction validation by cohort
                 </h2>
-                <InfoPopover label="Prospects are grouped by the score frozen before launch. Every percentage uses the cohort size n as its denominator, so higher-score bands can be compared on the same basis from Delivered through Won." />
+                <InfoPopover label="This table validates lemScore on business outcomes only. Each percentage uses the score cohort size n as its denominator. Delivery, opens and channel engagement are assessed separately in Step performance because not every prospect reaches every automated step." />
               </div>
               <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-                The client-facing test is simple: do higher pre-send score bands actually generate
-                stronger outcomes? Every percentage is the share of prospects in that score cohort
-                reaching that stage.
+                Do higher pre-send score bands produce more positive replies, meetings,
+                opportunities and wins? These outcomes use the cohort size as one common base.
               </p>
             </div>
             <div className="ml-auto flex flex-wrap gap-2">
@@ -196,16 +297,12 @@ export function CohortValidationTable() {
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[1180px] border-collapse text-left text-xs">
+            <table className="w-full min-w-[780px] border-collapse text-left text-xs">
               <thead className="bg-surface text-[10px] tracking-wide text-muted-foreground uppercase">
                 <tr>
                   <CohortHead>Launch score</CohortHead>
                   <CohortHead>n</CohortHead>
                   <CohortHead>Mean</CohortHead>
-                  <CohortHead>Delivered</CohortHead>
-                  <CohortHead>Opened</CohortHead>
-                  <CohortHead>Clicked</CohortHead>
-                  <CohortHead>LinkedIn engaged</CohortHead>
                   <CohortHead>Positive replies</CohortHead>
                   <CohortHead>Meetings</CohortHead>
                   <CohortHead>Opportunities</CohortHead>
@@ -219,10 +316,6 @@ export function CohortValidationTable() {
                     <td className="whitespace-nowrap px-3 py-3 font-semibold">{row.label}</td>
                     <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
                     <td className="px-3 py-3 tabular-nums">{row.average ?? "—"}</td>
-                    <RateCell count={row.delivered} denominator={row.total} metric="delivered" />
-                    <RateCell count={row.opened} denominator={row.total} metric="opened" />
-                    <RateCell count={row.clicked} denominator={row.total} metric="clicked" />
-                    <RateCell count={row.linkedinEngaged} denominator={row.total} metric="linkedinEngaged" />
                     <RateCell count={row.positiveReply} denominator={row.total} metric="positiveReply" />
                     <RateCell count={row.meeting} denominator={row.total} metric="meeting" />
                     <RateCell count={row.opportunity} denominator={row.total} metric="opportunity" />
@@ -235,16 +328,15 @@ export function CohortValidationTable() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="font-semibold text-foreground">Base = cohort prospects (n)</span>
-            <span>Every percentage uses the same denominator within its score band.</span>
+            <span className="font-semibold text-foreground">Base = prospects in each score cohort (n)</span>
             <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">Strong</span>
             <span className="rounded-md bg-warning-soft px-2 py-0.5 font-semibold text-warning">Medium</span>
             <span className="rounded-md bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">Weak</span>
             <span>Won: higher is better · Lost: lower is better.</span>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Demo data only. In production, model calibration can still compare predicted vs actual
-            outcomes in the background, while the salesperson sees comparable cohort conversion rates.
+            Demo data only. Step-level metrics are deliberately kept out of this validation table so
+            a strong early message is not penalized simply because fewer prospects need later steps.
           </p>
         </section>
       </div>
@@ -252,27 +344,27 @@ export function CohortValidationTable() {
   );
 }
 
-function PathwayBenchmarkChart() {
+function OverallOutcomesChart() {
   return (
     <section className="rounded-2xl border border-border bg-background p-5 shadow-sm">
       <div className="flex flex-wrap items-start gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold">Pathway performance vs benchmark</h2>
-            <InfoPopover label="Both lines use the same denominator at every stage: the prospects contacted at the start of the campaign. For example, 8.8% positive replies means 8.8 positive replies per 100 prospects contacted." />
+            <h2 className="text-base font-semibold">Overall outcomes vs benchmark</h2>
+            <InfoPopover label="Overall business outcomes always use the prospects launched at the start as the denominator. It does not matter whether a prospect replied by email, LinkedIn or after a follow-up." />
           </div>
           <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-            Compare the share of initial contacted prospects reaching each stage with comparable
-            historical lemlist campaigns using the same pathway.
+            Current campaign vs comparable historical lemlist campaigns. Every percentage is based
+            on the initial launched prospects.
           </p>
         </div>
         <DemoBadge className="ml-auto" />
       </div>
 
       <div className="mt-4 rounded-xl border border-border bg-card p-3">
-        <div className="h-[320px] w-full">
+        <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={PATHWAY_BENCHMARK} margin={{ top: 12, right: 18, left: 0, bottom: 18 }}>
+            <LineChart data={OVERALL_OUTCOMES} margin={{ top: 12, right: 18, left: 0, bottom: 18 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis
                 dataKey="stage"
@@ -282,16 +374,16 @@ function PathwayBenchmarkChart() {
                 interval={0}
               />
               <YAxis
-                domain={[0, 100]}
+                domain={[0, 10]}
                 tickFormatter={(value) => `${value}%`}
                 tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
-                width={44}
+                width={40}
               />
               <RechartsTooltip
                 formatter={(value, name) => [
-                  `${Number(value).toFixed(1)}% of contacted prospects`,
+                  `${Number(value).toFixed(1)}% of launched prospects`,
                   name === "historical" ? "Historical benchmark" : "Current campaign",
                 ]}
                 contentStyle={{
@@ -303,7 +395,7 @@ function PathwayBenchmarkChart() {
               />
               <Legend
                 formatter={(value) =>
-                  value === "historical" ? "Historical benchmark · same pathway" : "Current campaign"
+                  value === "historical" ? "Historical benchmark" : "Current campaign"
                 }
                 wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
               />
@@ -329,15 +421,84 @@ function PathwayBenchmarkChart() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          All rates use the same base: initial contacted prospects = 100%. This makes the historical
-          and current curves directly comparable from first contact through Closed Won.
-        </p>
-        <div className="rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-[11px] text-warning">
-          <strong>Reliability:</strong> results become more meaningful around ~30 replies; smaller
-          samples should be treated as directional, and stronger conclusions require more volume.
+      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+        Base = initial launched prospects. A prospect counts in the outcome regardless of which
+        message or channel produced it.
+      </p>
+    </section>
+  );
+}
+
+function StepPerformanceTable() {
+  return (
+    <section className="rounded-2xl border border-border bg-background p-5 shadow-sm">
+      <div className="flex flex-wrap items-start gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold">Step performance vs benchmark</h2>
+            <InfoPopover label="A step is evaluated only on prospects who actually reached that step. If the first email converts well and stops prospects before LinkedIn, the LinkedIn step is not penalized for having fewer total interactions." />
+          </div>
+          <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
+            Diagnose each touch only among prospects who were actually exposed to that touch.
+          </p>
         </div>
+        <DemoBadge className="ml-auto" />
+      </div>
+
+      <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+        <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+          <thead className="bg-surface text-[10px] tracking-wide text-muted-foreground uppercase">
+            <tr>
+              <CohortHead>Step</CohortHead>
+              <CohortHead>Metric</CohortHead>
+              <CohortHead>Reached n</CohortHead>
+              <CohortHead>Current</CohortHead>
+              <CohortHead>Historical benchmark</CohortHead>
+              <CohortHead>Difference</CohortHead>
+            </tr>
+          </thead>
+          <tbody>
+            {STEP_PERFORMANCE.map((row) => {
+              const delta = row.current - row.historical;
+              return (
+                <tr key={row.step} className="border-t border-border bg-card">
+                  <td className="px-3 py-3 font-semibold">{row.step}</td>
+                  <td className="px-3 py-3 text-muted-foreground">{row.metric}</td>
+                  <td className="px-3 py-3 font-semibold tabular-nums">{row.reached}</td>
+                  <td className="px-3 py-3 font-semibold tabular-nums">{row.current.toFixed(1)}%</td>
+                  <td className="px-3 py-3 tabular-nums text-muted-foreground">
+                    {row.historical.toFixed(1)}%
+                  </td>
+                  <td className="px-3 py-3">
+                    <span
+                      className={cn(
+                        "inline-flex rounded-md px-2 py-1 font-semibold tabular-nums",
+                        delta >= 0
+                          ? "bg-success-soft text-success"
+                          : "bg-destructive/10 text-destructive",
+                      )}
+                    >
+                      {delta >= 0 ? "+" : ""}
+                      {delta.toFixed(1)} pp
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
+        {STEP_PERFORMANCE.map((row) => (
+          <div
+            key={`${row.step}-sample`}
+            className="rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-[11px] text-warning"
+          >
+            <strong>{row.step}:</strong> based on {row.reached} prospects who reached this step.
+            Confidence improves as this sample grows.
+          </div>
+        ))}
       </div>
     </section>
   );
