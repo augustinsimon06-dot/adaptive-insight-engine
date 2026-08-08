@@ -25,19 +25,19 @@ const ICP_TRAITS = [
 
 const WINNING_PATTERNS = [
   {
-    name: "Won campaign · “Ramp time” · VP Sales 201–500",
+    name: "Campaign · “Ramp time” · VP Sales 201–500",
     pattern: "Opened on the prospect's own hiring wave (job posts quoted by name)",
-    result: "12 closed-won deals",
+    result: "12.4% positive replies · 6.1% meetings",
   },
   {
-    name: "Won campaign · “New CRO playbook” · SaaS 250–500",
+    name: "Campaign · “New CRO playbook” · SaaS 250–500",
     pattern: "Referenced the new sales leader's first 90-day priorities",
-    result: "9 opportunities, 4 won",
+    result: "9.8% positive replies · 4.7% meetings",
   },
   {
-    name: "Won campaign · “Peer proof” · B2B SaaS",
+    name: "Campaign · “Peer proof” · B2B SaaS",
     pattern: "One named peer company of the same size with a quantified outcome",
-    result: "highest call-booking rate of the workspace",
+    result: "highest meeting-booking rate in the comparable sample",
   },
 ];
 
@@ -90,7 +90,7 @@ export function ScorePanel({
         </div>
         <InfoPopover
           className="w-96"
-          label="This is not lemlist's generic writing or deliverability score. It evaluates the exact message against the confirmed Campaign ICP, channel, position and timing, then compares that context with commercially similar historical messages and outcomes. Individual prospect fit is calculated separately in Prospect list."
+          label="This is not lemlist's generic writing or deliverability score. It evaluates the exact message against the ICP already stored in lemlist, its channel, order and timing, then compares that context with commercially similar historical campaigns and outcomes. Individual sequence-to-prospect fit is calculated separately in Prospect list."
         />
         {onCollapse && (
           <Button
@@ -117,7 +117,7 @@ export function ScorePanel({
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-semibold tabular-nums">{result.score}</span>
           <span className="text-sm text-muted-foreground">/100</span>
-          <InfoPopover label={`This 0–100 number is an optimization index, not a reply probability. It measures how closely this exact message matches outcome-winning patterns for the confirmed ICP: ${targetSegment}. Changing the selected prospects does not change it.`} />
+          <InfoPopover label={`This 0–100 number is an optimization index, not a reply probability. It measures how closely this exact message matches outcome-winning patterns for the ICP stored in lemlist: ${targetSegment}. Changing the selected prospects does not change this message-level score.`} />
           {analyzing && (
             <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Updating…
@@ -140,7 +140,7 @@ export function ScorePanel({
               {bandLabel(result.score)}
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              Exact copy × confirmed ICP × channel × position × timing × comparable commercial outcomes.
+              Exact copy × ICP context × channel × order × timing × comparable historical outcomes.
             </p>
           </>
         )}
@@ -169,10 +169,11 @@ export function ScorePanel({
                 <Sparkles className="ml-auto h-4 w-4 shrink-0 text-lem" aria-hidden="true" />
               </span>
               <span className="mt-1.5 block leading-relaxed text-foreground">
-                Your confirmed ICP sits here: <strong>{targetSegment}</strong>. Companies that{" "}
-                <strong>{icpTrait}</strong> booked{" "}
-                <strong className="text-success">{winnerCallRate}% of calls</strong> with this
-                channel, versus <strong>{yourCallRate}%</strong> for messages written like yours.
+                lemlist context: <strong>{targetSegment}</strong>. Comparable prospects that{" "}
+                <strong>{icpTrait}</strong> generated{" "}
+                <strong className="text-success">{winnerCallRate}% positive engagement</strong> with
+                this type of touch, versus <strong>{yourCallRate}%</strong> for messages written like
+                yours.
               </span>
               <span className="mt-1 block text-muted-foreground">
                 Gap driver: {priority.label} · hover for the detail
@@ -181,12 +182,12 @@ export function ScorePanel({
           </HoverCardTrigger>
           <HoverCardContent align="start" side="right" className="w-96 text-xs leading-relaxed">
             <p className="font-semibold text-foreground">
-              What the winning campaigns did differently
+              What comparable campaigns did differently
             </p>
             <p className="mt-1 text-muted-foreground">
               On {formatCount(result.comparableMessages)} comparable demo messages sent to{" "}
-              {targetSegment}, the ones that {icpTrait} generated {winnerCallRate}% of calls.
-              Messages sharing your current pattern generated {yourCallRate}%.
+              {targetSegment}, campaigns matching this context produced stronger positive replies and
+              meetings than messages sharing your current pattern.
             </p>
             <p className="mt-2 font-medium text-foreground">
               {priority.label}: {priority.benchmark}
@@ -207,7 +208,7 @@ export function ScorePanel({
           <Row label="Channel" value={channelLabel(step.channel)} />
           <Row label="Message position" value={`Content step ${step.position}`} />
           <Row label="Timing" value={step.timing} />
-          <Row label="Confirmed ICP" value={targetSegment} />
+          <Row label="ICP from AI Context Center" value={targetSegment} />
           <Row label="Geography" value={icp.context.geography} />
         </dl>
       </section>
@@ -226,13 +227,13 @@ export function ScorePanel({
 
           <div className="mt-3 rounded-lg border-2 border-lem/45 bg-lem/[0.05] p-3">
             <p className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-lem uppercase">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Main driver ·
-              personalization learned from winning lemlist campaigns
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Main driver · patterns learned
+              from comparable lemlist campaigns
             </p>
             <p className="mt-1.5 text-[11px] leading-relaxed text-foreground">
-              Personalization weighs the most in this score. It is not a generic “add a variable”
-              rule: we compare your message with lemlist campaigns that actually closed deals on{" "}
-              {targetSegment} and reuse their personalization patterns.
+              This is not a generic “add a variable” rule. The demo compares your message with
+              campaigns sent to similar prospects and uses downstream signals such as clicks,
+              positive replies and meetings to estimate fit.
             </p>
             <ul className="mt-2 space-y-2">
               {winningCampaigns.map((campaign) => (
@@ -250,8 +251,8 @@ export function ScorePanel({
               ))}
             </ul>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Your message currently matches {personalizationMatch}% of these winning
-              personalization patterns.
+              Your message currently matches {personalizationMatch}% of these historically effective
+              patterns.
             </p>
           </div>
 
@@ -268,9 +269,9 @@ export function ScorePanel({
 
       <p className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-[11px] leading-relaxed text-muted-foreground">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-        This message score uses the confirmed Campaign ICP but stays independent from the selected
-        prospect list. Prospect list then adds each real prospect's context to score the full assigned
-        sequence. Launch freezes both predictions so actual outcomes can validate them later.
+        Message scoring reuses the ICP already stored in lemlist and stays independent from the
+        selected prospect list. Prospect list then adds each real prospect's context to score the
+        full assigned sequence. Launch freezes both predictions so later outcomes can validate them.
       </p>
       <DemoBadge className="w-fit" />
     </aside>
