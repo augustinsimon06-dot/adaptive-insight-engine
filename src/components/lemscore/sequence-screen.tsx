@@ -75,8 +75,8 @@ export function SequenceScreen() {
     }
     if (!lemScoreEnabled) {
       update({ lemScoreEnabled: true, panelOpen: true });
-      toast.success("lemScore activé", {
-        description: "Les scores de séquence et de prospects sont maintenant disponibles.",
+      toast.success("lemScore activated", {
+        description: "Sequence and prospect prediction scores are now available.",
       });
       return;
     }
@@ -143,14 +143,14 @@ export function SequenceScreen() {
               </Button>
             </HoverCardTrigger>
             <HoverCardContent align="end" className="w-80 text-xs leading-relaxed">
-              <p className="font-semibold text-foreground">Nouveau · lemScore</p>
+              <p className="font-semibold text-foreground">New · lemScore</p>
               <p className="mt-1 text-muted-foreground">
-                Compare votre séquence et chaque prospect aux campagnes historiques pour estimer,
-                avant l’envoi, où cette campagne a le plus de chances de fonctionner.
+                Compare your sequence and each prospect with historical campaign outcomes to predict,
+                before sending, where this campaign is most likely to work.
               </p>
               {!lemScoreEntitled && (
                 <p className="mt-2 font-medium text-foreground">
-                  Disponible avec l’option lemScore · cliquez pour voir les offres.
+                  Available with the lemScore add-on · click to view plans.
                 </p>
               )}
             </HoverCardContent>
@@ -168,14 +168,19 @@ export function SequenceScreen() {
           </span>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/25 px-6 py-2 text-xs text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>
-            Découvrez lemScore : utilisez vos résultats passés pour prédire quels prospects sont les
-            plus compatibles avec la séquence que vous venez de construire.
+        <div className="flex flex-wrap items-center gap-2 border-b border-lem/30 bg-lem/[0.07] px-6 py-2 text-xs">
+          <Sparkles className="h-3.5 w-3.5 text-lem" />
+          <span className="font-medium text-lem">
+            Discover lemScore:
+          </span>
+          <span className="text-foreground/80">
+            use your past campaign outcomes to predict which pre-selected prospects best match the
+            sequence you just built.
           </span>
           {!lemScoreEntitled && (
-            <span className="ml-auto font-medium text-foreground">Option premium</span>
+            <span className="ml-auto rounded-full border border-lem/30 bg-lem/10 px-2 py-0.5 font-semibold text-lem">
+              Premium add-on
+            </span>
           )}
         </div>
       )}
