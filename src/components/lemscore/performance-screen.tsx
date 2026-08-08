@@ -570,15 +570,60 @@ function LaunchCohortValidation({
                 </td>
                 <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
                 <td className="px-3 py-3 tabular-nums">{row.average ?? "—"}</td>
-                <RateCell count={row.delivered} denominator={row.total} />
-                <RateCell count={row.opened} denominator={row.delivered} />
-                <RateCell count={row.clicked} denominator={row.delivered} />
-                <RateCell count={row.linkedinEngaged} denominator={row.total} />
-                <RateCell count={row.positiveReply} denominator={row.total} />
-                <RateCell count={row.meeting} denominator={row.total} />
-                <RateCell count={row.opportunity} denominator={row.total} />
-                <RateCell count={row.closedWon} denominator={row.total} />
-                <RateCell count={row.closedLost} denominator={row.total} />
+                <RateCell
+                  count={row.delivered}
+                  denominator={row.total}
+                  metric="delivered"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.opened}
+                  denominator={row.delivered}
+                  metric="opened"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.clicked}
+                  denominator={row.delivered}
+                  metric="clicked"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.linkedinEngaged}
+                  denominator={row.total}
+                  metric="linkedinEngaged"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.positiveReply}
+                  denominator={row.total}
+                  metric="positiveReply"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.meeting}
+                  denominator={row.total}
+                  metric="meeting"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.opportunity}
+                  denominator={row.total}
+                  metric="opportunity"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.closedWon}
+                  denominator={row.total}
+                  metric="closedWon"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.closedLost}
+                  denominator={row.total}
+                  metric="closedLost"
+                  meanScore={row.average}
+                />
               </tr>
             ))}
           </tbody>
