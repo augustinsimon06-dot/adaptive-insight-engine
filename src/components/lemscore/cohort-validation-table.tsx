@@ -1,5 +1,15 @@
 import { useState, type ReactNode } from "react";
 import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -40,6 +50,23 @@ type DemoCohortSeed = {
   closedWon: number;
   closedLost: number;
 };
+
+type PathwayPoint = {
+  stage: string;
+  historical: number;
+  current: number;
+};
+
+const PATHWAY_BENCHMARK: PathwayPoint[] = [
+  { stage: "Delivered", historical: 96.4, current: 97.2 },
+  { stage: "Opened", historical: 59.8, current: 66.1 },
+  { stage: "Clicked", historical: 12.7, current: 15.4 },
+  { stage: "LinkedIn", historical: 18.6, current: 22.1 },
+  { stage: "Positive reply", historical: 7.2, current: 9.1 },
+  { stage: "Meeting", historical: 43.8, current: 50.0 },
+  { stage: "Opportunity", historical: 57.1, current: 62.5 },
+  { stage: "Won", historical: 35.0, current: 41.7 },
+];
 
 const DEMO_COHORTS: DemoCohortSeed[] = [
   { variant: "A", label: "90–100", min: 90, max: 100, total: 160, average: 93, delivered: 157, opened: 118, clicked: 30, linkedinEngaged: 43, positiveReply: 19, meeting: 12, opportunity: 8, closedWon: 5, closedLost: 2 },
@@ -120,7 +147,9 @@ export function CohortValidationTable() {
   return (
     <div className="grid bg-surface lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="hidden border-r border-border bg-background lg:block" aria-hidden="true" />
-      <div className="px-6 pb-6">
+      <div className="space-y-5 px-6 pb-6">
+        <PathwayBenchmarkChart />
+
         <section className="rounded-2xl border-2 border-primary/50 bg-background p-5 shadow-sm">
           <div className="flex flex-wrap items-start gap-3">
             <div>
@@ -218,6 +247,98 @@ export function CohortValidationTable() {
         </section>
       </div>
     </div>
+  );
+}
+
+function PathwayBenchmarkChart() {
+  return (
+    <section className="rounded-2xl border border-border bg-background p-5 shadow-sm">
+      <div className="flex flex-wrap items-start gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold">Pathway performance vs benchmark</h2>
+            <InfoPopover label="The historical line represents aggregated outcomes from comparable campaigns using the same outreach pathway. The current line shows this campaign. Each stage keeps its operational denominator rather than forcing every metric into one funnel denominator." />
+          </div>
+          <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
+            Compare the current campaign with historical lemlist campaigns that used the same pathway,
+            from delivery through revenue outcomes.
+          </p>
+        </div>
+        <DemoBadge className="ml-auto" />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-border bg-card p-3">
+        <div className="h-[320px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={PATHWAY_BENCHMARK} margin={{ top: 12, right: 18, left: 0, bottom: 18 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+              <XAxis
+                dataKey="stage"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={{ stroke: "var(--border)" }}
+                tickLine={false}
+                interval={0}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tickFormatter={(value) => `${value}%`}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+              />
+              <RechartsTooltip
+                formatter={(value, name) => [
+                  `${Number(value).toFixed(1)}%`,
+                  name === "historical" ? "Historical benchmark" : "Current campaign",
+                ]}
+                contentStyle={{
+                  borderRadius: 10,
+                  borderColor: "var(--border)",
+                  background: "var(--background)",
+                  fontSize: 12,
+                }}
+              />
+              <Legend
+                formatter={(value) =>
+                  value === "historical" ? "Historical benchmark · same pathway" : "Current campaign"
+                }
+                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="historical"
+                stroke="var(--muted-foreground)"
+                strokeWidth={2.5}
+                strokeDasharray="7 5"
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="current"
+                stroke="var(--primary)"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Stage rates use the relevant denominator for that event — for example Delivered / Sent,
+          Opened / Delivered, Meetings / Positive replies, Opportunities / Meetings and Won /
+          Opportunities. This makes each point useful at its own stage of the pathway.
+        </p>
+        <div className="rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-[11px] text-warning">
+          <strong>Reliability:</strong> directional around ~30 replies; stronger conclusions require
+          more volume and depend on effect size.
+        </div>
+      </div>
+    </section>
   );
 }
 
