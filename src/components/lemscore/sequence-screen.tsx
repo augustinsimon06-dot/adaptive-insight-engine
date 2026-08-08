@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, PanelRightOpen, Sparkles } from "lucide-react";
+import { ChevronDown, Lock, PanelRightOpen, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -21,12 +22,15 @@ export function SequenceScreen() {
     selectedVariant,
     selectedStepId,
     panelOpen,
+    lemScoreEnabled,
+    lemScoreEntitled,
     update,
     steps,
     setStepContent,
     prospectsFor,
   } = store;
   const icp = getIcpState();
+  const lemScoreActive = lemScoreEnabled && lemScoreEntitled;
   const variantSteps = steps(selectedVariant);
   const selected = variantSteps.find((s) => s.id === selectedStepId) ?? variantSteps[0]!;
 
@@ -43,7 +47,7 @@ export function SequenceScreen() {
   }, [selected.id, selected.subject, selected.body]);
 
   const scheduleCommit = (patch: { subject?: string; body?: string }) => {
-    setAnalyzing(true);
+    if (lemScoreActive) setAnalyzing(true);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       setStepContent(selected.id, patch);
@@ -62,6 +66,21 @@ export function SequenceScreen() {
   const selectVariant = (v: VariantId) => {
     const first = steps(v).find((s) => s.hasContent)!;
     update({ selectedVariant: v, selectedStepId: first.id });
+  };
+
+  const activateLemScore = () => {
+    if (!lemScoreEntitled) {
+      window.location.href = "https://www.lemlist.com/fr/tarifs";
+      return;
+    }
+    if (!lemScoreEnabled) {
+      update({ lemScoreEnabled: true, panelOpen: true });
+      toast.success("lemScore activé", {
+        description: "Les scores de séquence et de prospects sont maintenant disponibles.",
+      });
+      return;
+    }
+    update({ panelOpen: true });
   };
 
   return (
@@ -92,34 +111,79 @@ export function SequenceScreen() {
         <span className="text-xs text-muted-foreground">
           A/B test active · leads split 50/50 · each prospect receives exactly one variant
         </span>
-        <InfoPopover label="lemScore does not route prospects toward the highest predicted score and does not change the 50/50 split. Each variant is scored independently." />
-        {!panelOpen && (
-          <div className="ml-auto flex gap-2">
+        <InfoPopover label="A/B assignment stays unchanged. When lemScore is active, each variant is evaluated independently and prospects are never rerouted automatically." />
+
+        <div className="ml-auto flex items-center gap-2">
+          {lemScoreActive && !panelOpen && (
             <Button variant="outline" size="sm" onClick={() => update({ panelOpen: true })}>
               <PanelRightOpen className="h-4 w-4" /> Show lemScore
             </Button>
-          </div>
-        )}
+          )}
+          <HoverCard openDelay={120} closeDelay={100}>
+            <HoverCardTrigger asChild>
+              <Button
+                size="sm"
+                onClick={activateLemScore}
+                className={cn(
+                  "gap-2",
+                  !lemScoreEntitled &&
+                    "border border-border bg-muted text-muted-foreground shadow-none hover:bg-muted hover:text-foreground",
+                  lemScoreEntitled && !lemScoreEnabled &&
+                    "border border-lem/40 bg-lem text-white hover:bg-lem/90",
+                  lemScoreActive &&
+                    "border border-success/40 bg-success-soft text-success shadow-none hover:bg-success-soft",
+                )}
+              >
+                {!lemScoreEntitled && <Lock className="h-3.5 w-3.5" />}
+                <Sparkles className="h-3.5 w-3.5" />
+                {lemScoreActive ? "lemScore active" : "Activate lemScore"}
+                <span className="rounded-full border border-current/20 px-1.5 py-0.5 text-[9px] font-bold tracking-wide">
+                  NEW
+                </span>
+              </Button>
+            </HoverCardTrigger>
+            <HoverCardContent align="end" className="w-80 text-xs leading-relaxed">
+              <p className="font-semibold text-foreground">Nouveau · lemScore</p>
+              <p className="mt-1 text-muted-foreground">
+                Compare votre séquence et chaque prospect aux campagnes historiques pour estimer,
+                avant l’envoi, où cette campagne a le plus de chances de fonctionner.
+              </p>
+              {!lemScoreEntitled && (
+                <p className="mt-2 font-medium text-foreground">
+                  Disponible avec l’option lemScore · cliquez pour voir les offres.
+                </p>
+              )}
+            </HoverCardContent>
+          </HoverCard>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/[0.035] px-6 py-2 text-xs">
-        <span className="font-medium text-muted-foreground">Scoring against confirmed ICP:</span>
-        <strong className="text-foreground">{icpLabel(icp.context)}</strong>
-        <span className="text-muted-foreground">· {icp.context.geography}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-auto h-7 px-2 text-xs text-primary"
-          onClick={() => update({ mainTab: "icp" as never })}
-        >
-          Edit ICP
-        </Button>
-      </div>
+      {lemScoreActive ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/[0.035] px-6 py-2 text-xs">
+          <span className="font-medium text-muted-foreground">Scoring against AI Context Center ICP:</span>
+          <strong className="text-foreground">{icpLabel(icp.context)}</strong>
+          <span className="text-muted-foreground">· {icp.context.geography}</span>
+          <span className="ml-auto rounded-full border border-success/30 bg-success-soft px-2 py-0.5 text-[10px] font-semibold text-success">
+            Live prediction active
+          </span>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/25 px-6 py-2 text-xs text-muted-foreground">
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>
+            Découvrez lemScore : utilisez vos résultats passés pour prédire quels prospects sont les
+            plus compatibles avec la séquence que vous venez de construire.
+          </span>
+          {!lemScoreEntitled && (
+            <span className="ml-auto font-medium text-foreground">Option premium</span>
+          )}
+        </div>
+      )}
 
       <div
         className={cn(
-          "grid min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[390px_360px_minmax(0,1fr)]",
-          !panelOpen && "xl:grid-cols-[390px_minmax(0,1fr)]",
+          "grid min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[390px_minmax(0,1fr)]",
+          lemScoreActive && panelOpen && "xl:grid-cols-[390px_360px_minmax(0,1fr)]",
         )}
       >
         <WorkflowCanvas
@@ -137,7 +201,7 @@ export function SequenceScreen() {
           }
         />
 
-        {panelOpen && selected.hasContent && (
+        {lemScoreActive && panelOpen && selected.hasContent && (
           <div className="hidden min-h-0 overflow-hidden xl:block">
             <ScorePanel
               step={selected}
@@ -146,7 +210,7 @@ export function SequenceScreen() {
             />
           </div>
         )}
-        {panelOpen && !selected.hasContent && (
+        {lemScoreActive && panelOpen && !selected.hasContent && (
           <div className="m-3 hidden min-h-0 rounded-2xl border-2 border-primary/60 bg-background p-4 text-xs text-muted-foreground xl:block">
             This is an action step with no message to evaluate. Select an email, LinkedIn message or
             script step to see its lemScore.
@@ -160,7 +224,9 @@ export function SequenceScreen() {
               <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
                 {channelLabel(selected.channel)}
               </span>
-              {selected.hasContent && <MobilePanelTrigger step={selected} analyzing={analyzing} />}
+              {lemScoreActive && selected.hasContent && (
+                <MobilePanelTrigger step={selected} analyzing={analyzing} />
+              )}
               {selected.hasContent && (
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   <Button
@@ -223,17 +289,19 @@ export function SequenceScreen() {
                   }}
                   className="mt-1 font-normal leading-relaxed"
                 />
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  lemScore evaluates this exact message against the confirmed Campaign ICP, plus its
-                  channel, position and timing context. Individual prospect fit is calculated
-                  separately in Prospect list. It never edits your copy.
-                </p>
+                {lemScoreActive && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    lemScore evaluates this exact message against the ICP already stored in lemlist,
+                    plus channel, order and timing. Individual sequence-to-prospect fit is calculated
+                    in Prospect list. It never edits your copy.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">{channelLabel(selected.channel)}</p>
                 <p className="mt-1">
-                  This step has no message content, so lemScore does not score it.
+                  This step has no message content, so there is no copy to edit here.
                 </p>
                 <DemoBadge className="mt-3" />
               </div>
