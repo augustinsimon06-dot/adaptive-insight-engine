@@ -57,7 +57,12 @@ export function ScorePanel({
         )}
       </div>
 
-      <section className="rounded-xl border-2 border-primary/50 bg-primary/[0.025] p-4">
+      <section
+        className={cn(
+          "rounded-xl border-2 p-4",
+          unavailable ? "border-warning/60 bg-warning-soft/40" : bandFrameClasses(result.score),
+        )}
+      >
         <p className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
           Live message score
         </p>
