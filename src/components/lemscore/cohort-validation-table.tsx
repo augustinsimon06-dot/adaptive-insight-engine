@@ -82,8 +82,8 @@ const DEMO_COHORTS: DemoCohortSeed[] = [
 
 const THRESHOLDS: Record<CohortMetric, { good: number; medium: number }> = {
   delivered: { good: 97, medium: 94 },
-  opened: { good: 65, medium: 50 },
-  clicked: { good: 14, medium: 9 },
+  opened: { good: 60, medium: 45 },
+  clicked: { good: 13, medium: 8 },
   linkedinEngaged: { good: 20, medium: 14 },
   positiveReply: { good: 8, medium: 5 },
   meeting: { good: 5, medium: 2.5 },
@@ -158,12 +158,12 @@ export function CohortValidationTable() {
                 <h2 className="text-base font-semibold text-primary">
                   Prediction validation by cohort
                 </h2>
-                <InfoPopover label="Prospects are grouped by the score frozen before launch. If lemScore is useful, higher-score cohorts should produce stronger real business outcomes after sending." />
+                <InfoPopover label="Prospects are grouped by the score frozen before launch. Every percentage uses the cohort size n as its denominator, so higher-score bands can be compared on the same basis from Delivered through Won." />
               </div>
               <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
                 The client-facing test is simple: do higher pre-send score bands actually generate
-                stronger outcomes? Colours represent actual performance, not whether the model beat
-                its own forecast.
+                stronger outcomes? Every percentage is the share of prospects in that score cohort
+                reaching that stage.
               </p>
             </div>
             <div className="ml-auto flex flex-wrap gap-2">
@@ -220,8 +220,8 @@ export function CohortValidationTable() {
                     <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
                     <td className="px-3 py-3 tabular-nums">{row.average ?? "—"}</td>
                     <RateCell count={row.delivered} denominator={row.total} metric="delivered" />
-                    <RateCell count={row.opened} denominator={row.delivered} metric="opened" />
-                    <RateCell count={row.clicked} denominator={row.delivered} metric="clicked" />
+                    <RateCell count={row.opened} denominator={row.total} metric="opened" />
+                    <RateCell count={row.clicked} denominator={row.total} metric="clicked" />
                     <RateCell count={row.linkedinEngaged} denominator={row.total} metric="linkedinEngaged" />
                     <RateCell count={row.positiveReply} denominator={row.total} metric="positiveReply" />
                     <RateCell count={row.meeting} denominator={row.total} metric="meeting" />
@@ -235,7 +235,8 @@ export function CohortValidationTable() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="font-semibold text-foreground">Colour = actual performance</span>
+            <span className="font-semibold text-foreground">Base = cohort prospects (n)</span>
+            <span>Every percentage uses the same denominator within its score band.</span>
             <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">Strong</span>
             <span className="rounded-md bg-warning-soft px-2 py-0.5 font-semibold text-warning">Medium</span>
             <span className="rounded-md bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">Weak</span>
@@ -243,7 +244,7 @@ export function CohortValidationTable() {
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
             Demo data only. In production, model calibration can still compare predicted vs actual
-            outcomes in the background, while the salesperson sees the simpler business result.
+            outcomes in the background, while the salesperson sees comparable cohort conversion rates.
           </p>
         </section>
       </div>
