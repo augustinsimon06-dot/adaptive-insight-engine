@@ -25,7 +25,6 @@ import { useLemScore } from "@/lib/lemscore/store";
 import { BetaBadge } from "./shared";
 
 const TABS = [
-  { id: "icp", label: "ICP" },
   { id: "sequence", label: "Sequence" },
   { id: "prospects", label: "Prospect list" },
   { id: "launch", label: "Launch" },
@@ -35,7 +34,6 @@ const TABS = [
 export function CampaignShell() {
   const { mainTab, update, launched, reset } = useLemScore();
   const [resetOpen, setResetOpen] = useState(false);
-  const activeTab = mainTab as string;
 
   return (
     <>
@@ -72,7 +70,7 @@ export function CampaignShell() {
               size="sm"
               onClick={() =>
                 toast.success("Campaign saved", {
-                  description: "Messages, campaign ICP and lemScore snapshots stored locally.",
+                  description: "Messages, launch state and lemScore snapshots stored locally.",
                 })
               }
             >
@@ -85,11 +83,11 @@ export function CampaignShell() {
             <button
               key={t.id}
               type="button"
-              aria-current={activeTab === t.id ? "page" : undefined}
-              onClick={() => update({ mainTab: t.id as never })}
+              aria-current={mainTab === t.id ? "page" : undefined}
+              onClick={() => update({ mainTab: t.id })}
               className={cn(
                 "-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                activeTab === t.id
+                mainTab === t.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
