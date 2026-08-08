@@ -228,6 +228,27 @@ export function ProspectListScreen() {
         </Button>
       </div>
 
+      <div className="sticky bottom-0 -mx-6 flex flex-wrap items-center gap-3 border-t border-border bg-background px-6 py-3 shadow-[0_-6px_20px_rgba(15,23,42,0.06)]">
+        <span className="text-xs text-muted-foreground">
+          {rows.length} prospects in this campaign ·{" "}
+          {selected.length ? `${selected.length} rows selected` : "no row selected"} · sending
+          selection is confirmed in Launch
+        </span>
+        <Button
+          className="ml-auto"
+          disabled={launched}
+          onClick={() => {
+            update({ mainTab: "launch" });
+            toast("Review before sending", {
+              description: "Pick the prospects to send in the launch queue. Demo data only.",
+            });
+          }}
+        >
+          <Rocket className="h-4 w-4" />
+          {launched ? "Campaign active (demo)" : "Launch campaign"}
+        </Button>
+      </div>
+
       <ProspectDrawer id={openId} onClose={() => setOpenId(null)} />
     </div>
   );
