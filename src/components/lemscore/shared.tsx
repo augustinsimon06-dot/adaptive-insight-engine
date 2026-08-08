@@ -79,6 +79,19 @@ export function bandWord(score: number) {
   return band === "strong" ? "Strong fit" : band === "medium" ? "Medium fit" : "Weak fit";
 }
 
+/** Deterministic thousands formatting (identical on server and client). */
+export function formatCount(value: number) {
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f");
+}
+
+/** Frame colour for a score card: green / orange / red thresholds. */
+export function bandFrameClasses(score: number) {
+  const band = scoreBand(score);
+  if (band === "strong") return "border-success/60 bg-success-soft/40";
+  if (band === "medium") return "border-warning/60 bg-warning-soft/50";
+  return "border-destructive/60 bg-destructive/5";
+}
+
 export function ScorePill({
   score,
   validity = "valid",
