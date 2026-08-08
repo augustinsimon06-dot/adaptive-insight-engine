@@ -570,21 +570,82 @@ function LaunchCohortValidation({
                 </td>
                 <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
                 <td className="px-3 py-3 tabular-nums">{row.average ?? "—"}</td>
-                <RateCell count={row.delivered} denominator={row.total} />
-                <RateCell count={row.opened} denominator={row.delivered} />
-                <RateCell count={row.clicked} denominator={row.delivered} />
-                <RateCell count={row.linkedinEngaged} denominator={row.total} />
-                <RateCell count={row.positiveReply} denominator={row.total} />
-                <RateCell count={row.meeting} denominator={row.total} />
-                <RateCell count={row.opportunity} denominator={row.total} />
-                <RateCell count={row.closedWon} denominator={row.total} />
-                <RateCell count={row.closedLost} denominator={row.total} />
+                <RateCell
+                  count={row.delivered}
+                  denominator={row.total}
+                  metric="delivered"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.opened}
+                  denominator={row.delivered}
+                  metric="opened"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.clicked}
+                  denominator={row.delivered}
+                  metric="clicked"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.linkedinEngaged}
+                  denominator={row.total}
+                  metric="linkedinEngaged"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.positiveReply}
+                  denominator={row.total}
+                  metric="positiveReply"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.meeting}
+                  denominator={row.total}
+                  metric="meeting"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.opportunity}
+                  denominator={row.total}
+                  metric="opportunity"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.closedWon}
+                  denominator={row.total}
+                  metric="closedWon"
+                  meanScore={row.average}
+                />
+                <RateCell
+                  count={row.closedLost}
+                  denominator={row.total}
+                  metric="closedLost"
+                  meanScore={row.average}
+                />
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">Colour = actual vs expected</span>
+        <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">
+          Above expectation
+        </span>
+        <span className="rounded-md bg-warning-soft px-2 py-0.5 font-semibold text-warning">
+          As expected
+        </span>
+        <span className="rounded-md bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">
+          Below expectation
+        </span>
+        <span>
+          Values stay absolute. A 90–100 band can be red when its results fall short of what that
+          score predicted; Lost is inverted (fewer losses than expected is green).
+        </span>
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         Beta interpretation: this is predictive validation, not causal proof. Compare bands only
         when their samples are large enough; otherwise use the trend as directional evidence.
       </p>
@@ -596,10 +657,80 @@ function CohortHead({ children }: { children: ReactNode }) {
   return <th className="whitespace-nowrap px-3 py-2.5 font-semibold">{children}</th>;
 }
 
-function RateCell({ count, denominator }: { count: number; denominator: number }) {
+/** Metric keys used for expected-vs-actual colouring. */
+type CohortMetric =
+  | "delivered"
+  | "opened"
+  | "clicked"
+  | "linkedinEngaged"
+  | "positiveReply"
+  | "meeting"
+  | "opportunity"
+  | "closedWon"
+  | "closedLost";
+
+/** Expected rate (%) for a cohort, given its mean predicted score. Demo model. */
+const EXPECTED_AT_70: Record<CohortMetric, number> = {
+  delivered: 96,
+  opened: 54,
+  clicked: 11,
+  linkedinEngaged: 17,
+  positiveReply: 6,
+  meeting: 3.4,
+  opportunity: 2.2,
+  closedWon: 0.9,
+  closedLost: 1.5,
+};
+
+function expectedRate(metric: CohortMetric, meanScore: number | null) {
+  const base = EXPECTED_AT_70[metric];
+  if (meanScore === null) return base;
+  const lift = 1 + (meanScore - 70) * 0.02;
+  const inverse = metric === "closedLost";
+  const factor = Math.max(0.35, inverse ? 2 - lift : lift);
+  return Math.max(0.2, base * factor);
+}
+
+/** Colour is relative to expectation, never to the absolute value. */
+function performanceClasses(actual: number, expected: number, inverse: boolean) {
+  const ratio = expected > 0 ? actual / expected : 1;
+  const adjusted = inverse ? (ratio > 0 ? 1 / ratio : 2) : ratio;
+  if (adjusted >= 1.1) return "bg-success-soft text-success";
+  if (adjusted <= 0.9) return "bg-destructive/10 text-destructive";
+  return "bg-warning-soft text-warning";
+}
+
+function RateCell({
+  count,
+  denominator,
+  metric,
+  meanScore,
+}: {
+  count: number;
+  denominator: number;
+  metric: CohortMetric;
+  meanScore: number | null;
+}) {
+  if (!denominator) {
+    return <td className="whitespace-nowrap px-3 py-3 tabular-nums text-muted-foreground">—</td>;
+  }
+  const actual = (count / denominator) * 100;
+  const expected = expectedRate(metric, meanScore);
+  const inverse = metric === "closedLost";
   return (
-    <td className="whitespace-nowrap px-3 py-3 tabular-nums">
-      {denominator ? `${Math.round((count / denominator) * 100)}% · ${count}` : "—"}
+    <td className="px-3 py-3">
+      <span
+        className={cn(
+          "inline-flex flex-col rounded-md px-2 py-1 font-semibold tabular-nums",
+          performanceClasses(actual, expected, inverse),
+        )}
+        title={`Expected ≈ ${Math.round(expected)}% for this score band`}
+      >
+        {Math.round(actual)}% · {count}
+        <span className="text-[10px] font-normal opacity-80">
+          exp. {Math.round(expected)}%
+        </span>
+      </span>
     </td>
   );
 }
