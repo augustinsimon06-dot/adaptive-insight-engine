@@ -57,6 +57,8 @@ type StepPerformance = {
   current: number;
 };
 
+const LAUNCHED_PROSPECTS = 164;
+
 const OVERALL_OUTCOMES: OutcomePoint[] = [
   { stage: "Positive reply", historical: 6.9, current: 8.8 },
   { stage: "Meeting", historical: 3.0, current: 4.4 },
@@ -66,6 +68,13 @@ const OVERALL_OUTCOMES: OutcomePoint[] = [
 
 const STEP_PERFORMANCE: StepPerformance[] = [
   { step: "Email #1", metric: "Open rate", reached: 164, historical: 58.4, current: 66.5 },
+  {
+    step: "LinkedIn connection request",
+    metric: "Acceptance rate",
+    reached: 132,
+    historical: 34.2,
+    current: 37.9,
+  },
   {
     step: "LinkedIn message",
     metric: "Engagement rate",
@@ -79,6 +88,13 @@ const STEP_PERFORMANCE: StepPerformance[] = [
     reached: 71,
     historical: 47.8,
     current: 53.5,
+  },
+  {
+    step: "Final email",
+    metric: "Reply rate",
+    reached: 46,
+    historical: 6.8,
+    current: 4.3,
   },
 ];
 
@@ -337,6 +353,7 @@ export function CohortValidationTable() {
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
             Demo data only. Step-level metrics are deliberately kept out of this validation table so
             a strong early message is not penalized simply because fewer prospects need later steps.
+            Closed Won is a downstream business outcome and is also influenced by sales execution and product fit.
           </p>
         </section>
       </div>
@@ -423,7 +440,8 @@ function OverallOutcomesChart() {
 
       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
         Base = initial launched prospects. A prospect counts in the outcome regardless of which
-        message or channel produced it.
+        message or channel produced it. Closed Won is also influenced by sales execution and product fit,
+        so it should be read as a final business outcome rather than a pure outreach-quality metric.
       </p>
     </section>
   );
@@ -436,23 +454,24 @@ function StepPerformanceTable() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold">Step performance vs benchmark</h2>
-            <InfoPopover label="A step is evaluated only on prospects who actually reached that step. If the first email converts well and stops prospects before LinkedIn, the LinkedIn step is not penalized for having fewer total interactions." />
+            <InfoPopover label="Exposed share tells you how much of the launched audience actually reached the step. Performance is then calculated only among those exposed prospects, so later steps are not penalized when earlier steps already converted or stopped some prospects." />
           </div>
           <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-            Diagnose each touch only among prospects who were actually exposed to that touch.
+            Separate how many prospects reached each touch from how well that touch performed once reached.
           </p>
         </div>
         <DemoBadge className="ml-auto" />
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+        <table className="w-full min-w-[1040px] border-collapse text-left text-xs">
           <thead className="bg-surface text-[10px] tracking-wide text-muted-foreground uppercase">
             <tr>
               <CohortHead>Step</CohortHead>
               <CohortHead>Metric</CohortHead>
-              <CohortHead>Reached n</CohortHead>
-              <CohortHead>Current</CohortHead>
+              <CohortHead>Prospects exposed</CohortHead>
+              <CohortHead>Share of launched</CohortHead>
+              <CohortHead>Performance on exposed prospects</CohortHead>
               <CohortHead>Historical benchmark</CohortHead>
               <CohortHead>Difference</CohortHead>
             </tr>
@@ -460,11 +479,13 @@ function StepPerformanceTable() {
           <tbody>
             {STEP_PERFORMANCE.map((row) => {
               const delta = row.current - row.historical;
+              const exposedShare = (row.reached / LAUNCHED_PROSPECTS) * 100;
               return (
                 <tr key={row.step} className="border-t border-border bg-card">
                   <td className="px-3 py-3 font-semibold">{row.step}</td>
                   <td className="px-3 py-3 text-muted-foreground">{row.metric}</td>
                   <td className="px-3 py-3 font-semibold tabular-nums">{row.reached}</td>
+                  <td className="px-3 py-3 tabular-nums">{exposedShare.toFixed(1)}%</td>
                   <td className="px-3 py-3 font-semibold tabular-nums">{row.current.toFixed(1)}%</td>
                   <td className="px-3 py-3 tabular-nums text-muted-foreground">
                     {row.historical.toFixed(1)}%
@@ -489,16 +510,10 @@ function StepPerformanceTable() {
         </table>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
-        {STEP_PERFORMANCE.map((row) => (
-          <div
-            key={`${row.step}-sample`}
-            className="rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-[11px] text-warning"
-          >
-            <strong>{row.step}:</strong> based on {row.reached} prospects who reached this step.
-            Confidence improves as this sample grows.
-          </div>
-        ))}
+      <div className="mt-3 rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+        <strong className="text-foreground">How to read it:</strong> LinkedIn message reached 108 of the 164 launched prospects
+        (65.9%). Its 25.0% performance is calculated only among those 108 exposed prospects, not among all 164.
+        Sample size is therefore dynamic: n = prospects exposed to each step, and confidence improves as that n grows.
       </div>
     </section>
   );
