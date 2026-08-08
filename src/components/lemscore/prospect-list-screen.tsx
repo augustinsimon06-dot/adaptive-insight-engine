@@ -23,7 +23,16 @@ import { FactorRow } from "./score-panel";
 const PAGE_SIZE = 15;
 
 export function ProspectListScreen() {
-  const { filters, update, sortDir, prospectScore, excluded, moved, launched } = useLemScore();
+  const {
+    filters,
+    update,
+    sortDir,
+    prospectScore,
+    excluded,
+    moved,
+    launchedProspectIds,
+    launch,
+  } = useLemScore();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -57,13 +66,22 @@ export function ProspectListScreen() {
     currentIds.length > 0 && currentIds.every((id) => selected.includes(id));
   const someCurrentSelected = currentIds.some((id) => selected.includes(id)) && !allCurrentSelected;
   const personas = Array.from(new Set(allProspects.map((p) => p.jobTitle))).sort();
+  const launchableSelectedIds = selected.filter((id) => {
+    const prospect = allProspects.find((item) => item.id === id);
+    return (
+      prospect &&
+      !excluded.includes(id) &&
+      !moved[id] &&
+      !launchedProspectIds.includes(id)
+    );
+  });
 
   const statusOf = (p: Prospect) =>
     excluded.includes(p.id)
       ? "Excluded"
       : moved[p.id]
         ? `Moved · ${moved[p.id]}`
-        : launched
+        : launchedProspectIds.includes(p.id)
           ? "In sequence"
           : "Not started";
 
@@ -73,11 +91,10 @@ export function ProspectListScreen() {
         <h2 className="text-base font-semibold">Prospect list</h2>
         <DemoBadge />
         <span className="text-xs text-muted-foreground">
-          Campaign members · lemScore predicts the complete fixed sequence assigned to each
-          prospect. Row selection is for campaign management; final send selection happens in
-          Launch.
+          Campaign members · check the prospects you want to launch. Only eligible checked rows are
+          added to the sequence.
         </span>
-        <InfoPopover label="These checkboxes only select table rows for manual bulk actions. An unchecked prospect still belongs to the campaign. Launch has a separate selection for choosing who will actually be sent." />
+        <InfoPopover label="Launch applies only to checked prospects that have not already started and are not excluded or moved. Unchecked prospects stay in the campaign as Not started." />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
@@ -230,22 +247,28 @@ export function ProspectListScreen() {
 
       <div className="sticky bottom-0 -mx-6 flex flex-wrap items-center gap-3 border-t border-border bg-background px-6 py-3 shadow-[0_-6px_20px_rgba(15,23,42,0.06)]">
         <span className="text-xs text-muted-foreground">
-          {rows.length} prospects in this campaign ·{" "}
-          {selected.length ? `${selected.length} rows selected` : "no row selected"} · sending
-          selection is confirmed in Launch
+          {selected.length
+            ? `${selected.length} checked · ${launchableSelectedIds.length} ready to launch`
+            : "Check at least one prospect to enable Launch"}
         </span>
         <Button
           className="ml-auto"
-          disabled={launched}
+          disabled={launchableSelectedIds.length === 0}
           onClick={() => {
-            update({ mainTab: "launch" });
-            toast("Review before sending", {
-              description: "Pick the prospects to send in the launch queue. Demo data only.",
+            const count = launchableSelectedIds.length;
+            launch(launchableSelectedIds, "prospects");
+            setSelected((previous) =>
+              previous.filter((id) => !launchableSelectedIds.includes(id)),
+            );
+            toast.success(`${count} prospect${count === 1 ? "" : "s"} launched`, {
+              description: "Only the checked eligible prospects were added to the sequence.",
             });
           }}
         >
           <Rocket className="h-4 w-4" />
-          {launched ? "Campaign active (demo)" : "Launch campaign"}
+          {launchableSelectedIds.length
+            ? `Launch ${launchableSelectedIds.length} prospect${launchableSelectedIds.length === 1 ? "" : "s"}`
+            : "Select prospects to launch"}
         </Button>
       </div>
 
