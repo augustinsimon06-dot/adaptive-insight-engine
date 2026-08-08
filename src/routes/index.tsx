@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { LemScoreProvider, useLemScore } from "@/lib/lemscore/store";
 import { CampaignShell } from "@/components/lemscore/campaign-shell";
+import { IcpScreen } from "@/components/lemscore/icp-screen";
 import { SequenceScreen } from "@/components/lemscore/sequence-screen";
 import { ProspectListScreen } from "@/components/lemscore/prospect-list-screen";
 import { LaunchScreen } from "@/components/lemscore/launch-screen";
@@ -49,9 +50,11 @@ function Index() {
 
 function Screens() {
   const { mainTab } = useLemScore();
-  if (mainTab === "sequence") return <SequenceScreen />;
-  if (mainTab === "prospects") return <ProspectListScreen />;
-  if (mainTab === "launch") return <LaunchScreen />;
+  const activeTab = mainTab as string;
+  if (activeTab === "icp") return <IcpScreen />;
+  if (activeTab === "sequence") return <SequenceScreen />;
+  if (activeTab === "prospects") return <ProspectListScreen />;
+  if (activeTab === "launch") return <LaunchScreen />;
   return (
     <>
       <PerformanceScreen />
