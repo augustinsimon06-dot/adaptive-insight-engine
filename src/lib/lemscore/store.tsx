@@ -18,7 +18,7 @@ import {
   aggregateProspectSequenceScore,
   aggregateVariantSequenceScore,
   recalibrateAfterOutcomes,
-} from "./scoring";
+} from "./dynamic-scoring";
 import type { CampaignOutcome, ScoreSnapshot, SequenceStep, VariantId } from "./types";
 
 const STORAGE_KEY = "lemscore.beta.v4";
@@ -357,6 +357,7 @@ export function LemScoreProvider({ children }: { children: ReactNode }) {
           window.localStorage.removeItem(STORAGE_KEY);
           window.localStorage.removeItem("lemscore.beta.v2");
           window.localStorage.removeItem("lemscore.beta.v1");
+          window.localStorage.removeItem("lemscore.icp.v1");
         } catch {
           /* localStorage may be unavailable in private browsing */
         }
