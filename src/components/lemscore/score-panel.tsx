@@ -15,6 +15,33 @@ import {
   formatCount,
 } from "./shared";
 
+const TARGET_SEGMENT = "VP Sales · B2B SaaS · 201–500";
+
+const ICP_TRAITS = [
+  "are actively hiring sales reps",
+  "changed their sales leadership in the last 90 days",
+  "just raised a growth round",
+  "recently rolled out a new sales enablement tool",
+];
+
+const WINNING_PATTERNS = [
+  {
+    name: "Won campaign · “Ramp time” · VP Sales 201–500",
+    pattern: "Opened on the prospect's own hiring wave (job posts quoted by name)",
+    result: "12 closed-won deals",
+  },
+  {
+    name: "Won campaign · “New CRO playbook” · SaaS 250–500",
+    pattern: "Referenced the new sales leader's first 90-day priorities",
+    result: "9 opportunities, 4 won",
+  },
+  {
+    name: "Won campaign · “Peer proof” · B2B SaaS",
+    pattern: "One named peer company of the same size with a quantified outcome",
+    result: "highest call-booking rate of the workspace",
+  },
+];
+
 export function ScorePanel({
   step,
   analyzing,
@@ -32,6 +59,20 @@ export function ScorePanel({
     .slice(0, 3);
   const priority = negative[0] ?? result.factors[0];
   const unavailable = result.validity !== "valid";
+
+  const seed = step.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const icpTrait = ICP_TRAITS[seed % ICP_TRAITS.length]!;
+  const winnerCallRate = Math.round(result.prediction.positiveReplyRate * 2.1 + 6);
+  const yourCallRate = Math.max(
+    1,
+    Math.round((winnerCallRate * (55 + result.score * 0.4)) / 100),
+  );
+  const personalizationMatch = Math.min(96, Math.max(18, Math.round(result.score * 0.9)));
+  const winningCampaigns = WINNING_PATTERNS.map((campaign, index) => ({
+    ...campaign,
+    similarity: 92 - index * 7 - (seed % 4),
+  }));
+
 
   return (
     <aside
