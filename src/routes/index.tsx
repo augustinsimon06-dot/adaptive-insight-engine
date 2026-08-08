@@ -34,9 +34,9 @@ function Index() {
   return (
     <LemScoreProvider>
       <TooltipProvider delayDuration={200}>
-        <div className="min-h-screen bg-surface font-sans text-foreground">
+        <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-surface font-sans text-foreground">
           <CampaignShell />
-          <main>
+          <main className="min-h-0 flex-1 overflow-auto bg-surface">
             <Screens />
           </main>
           <Toaster />
