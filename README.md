@@ -67,3 +67,5 @@ Quality checks:
 npm run build
 npm run lint
 ```
+
+<!-- lovable-sync-trigger: 2026-08-08T03:07+02:00 -->
