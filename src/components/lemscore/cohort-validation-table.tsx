@@ -58,14 +58,15 @@ type PathwayPoint = {
 };
 
 const PATHWAY_BENCHMARK: PathwayPoint[] = [
+  { stage: "Contacted", historical: 100, current: 100 },
   { stage: "Delivered", historical: 96.4, current: 97.2 },
-  { stage: "Opened", historical: 59.8, current: 66.1 },
-  { stage: "Clicked", historical: 12.7, current: 15.4 },
-  { stage: "LinkedIn", historical: 18.6, current: 22.1 },
-  { stage: "Positive reply", historical: 7.2, current: 9.1 },
-  { stage: "Meeting", historical: 43.8, current: 50.0 },
-  { stage: "Opportunity", historical: 57.1, current: 62.5 },
-  { stage: "Won", historical: 35.0, current: 41.7 },
+  { stage: "Opened", historical: 57.6, current: 64.2 },
+  { stage: "Clicked", historical: 12.2, current: 15.0 },
+  { stage: "LinkedIn", historical: 9.8, current: 12.6 },
+  { stage: "Positive reply", historical: 6.9, current: 8.8 },
+  { stage: "Meeting", historical: 3.0, current: 4.4 },
+  { stage: "Opportunity", historical: 1.7, current: 2.8 },
+  { stage: "Won", historical: 0.6, current: 1.2 },
 ];
 
 const DEMO_COHORTS: DemoCohortSeed[] = [
@@ -257,11 +258,11 @@ function PathwayBenchmarkChart() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold">Pathway performance vs benchmark</h2>
-            <InfoPopover label="The historical line represents aggregated outcomes from comparable campaigns using the same outreach pathway. The current line shows this campaign. Each stage keeps its operational denominator rather than forcing every metric into one funnel denominator." />
+            <InfoPopover label="Both lines use the same denominator at every stage: the prospects contacted at the start of the campaign. For example, 8.8% positive replies means 8.8 positive replies per 100 prospects contacted." />
           </div>
           <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-            Compare the current campaign with historical lemlist campaigns that used the same pathway,
-            from delivery through revenue outcomes.
+            Compare the share of initial contacted prospects reaching each stage with comparable
+            historical lemlist campaigns using the same pathway.
           </p>
         </div>
         <DemoBadge className="ml-auto" />
@@ -289,7 +290,7 @@ function PathwayBenchmarkChart() {
               />
               <RechartsTooltip
                 formatter={(value, name) => [
-                  `${Number(value).toFixed(1)}%`,
+                  `${Number(value).toFixed(1)}% of contacted prospects`,
                   name === "historical" ? "Historical benchmark" : "Current campaign",
                 ]}
                 contentStyle={{
@@ -329,13 +330,12 @@ function PathwayBenchmarkChart() {
 
       <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Stage rates use the relevant denominator for that event — for example Delivered / Sent,
-          Opened / Delivered, Meetings / Positive replies, Opportunities / Meetings and Won /
-          Opportunities. This makes each point useful at its own stage of the pathway.
+          All rates use the same base: initial contacted prospects = 100%. This makes the historical
+          and current curves directly comparable from first contact through Closed Won.
         </p>
         <div className="rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-[11px] text-warning">
-          <strong>Reliability:</strong> directional around ~30 replies; stronger conclusions require
-          more volume and depend on effect size.
+          <strong>Reliability:</strong> results become more meaningful around ~30 replies; smaller
+          samples should be treated as directional, and stronger conclusions require more volume.
         </div>
       </div>
     </section>
