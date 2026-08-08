@@ -27,9 +27,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { channelLabel } from "@/lib/lemscore/benchmarks";
-import { simulateProspectOutcome, stepMetrics } from "@/lib/lemscore/data";
+import { stepMetrics } from "@/lib/lemscore/data";
 import { useLemScore } from "@/lib/lemscore/store";
-import type { Prospect, ProspectOutcome, ScoreSnapshot, VariantId } from "@/lib/lemscore/types";
+import type { VariantId } from "@/lib/lemscore/types";
 import { DemoBadge, InfoPopover, ScorePill, TrendArrow } from "./shared";
 
 export function PerformanceScreen() {
@@ -45,8 +45,6 @@ export function PerformanceScreen() {
     activeProspects,
     launchedProspects,
     launchedProspectsFor,
-    prospectScore,
-    prospectLaunchSnapshot,
   } = useLemScore();
   const [stepId, setStepId] = useState("A1");
   const [range, setRange] = useState("last_30");
@@ -309,11 +307,7 @@ export function PerformanceScreen() {
                 </div>
               </section>
 
-              <LaunchCohortValidation
-                prospects={launchedProspects}
-                prospectScore={(id) => prospectScore(id).score}
-                launchSnapshot={prospectLaunchSnapshot}
-              />
+              <LaunchCohortValidation />
             </>
           ) : (
             <section className="space-y-4">
@@ -418,18 +412,38 @@ export function PerformanceScreen() {
 
 type CohortView = "all" | VariantId | "split";
 type CohortPreset = "standard" | "detailed";
+type DemoCohortSeed = {
+  variant: VariantId;
+  label: "90–100" | "80–89" | "60–79" | "Below 60";
+  min: number;
+  max: number;
+  total: number;
+  average: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  linkedinEngaged: number;
+  positiveReply: number;
+  meeting: number;
+  opportunity: number;
+  closedWon: number;
+  closedLost: number;
+};
 
-function LaunchCohortValidation({
-  prospects,
-  prospectScore,
-  launchSnapshot,
-}: {
-  prospects: Prospect[];
-  prospectScore: (id: string) => number;
-  launchSnapshot: (id: string) => ScoreSnapshot | null;
-}) {
+const DEMO_COHORTS: DemoCohortSeed[] = [
+  { variant: "A", label: "90–100", min: 90, max: 100, total: 140, average: 93, delivered: 136, opened: 96, clicked: 20, linkedinEngaged: 33, positiveReply: 10, meeting: 5, opportunity: 3, closedWon: 2, closedLost: 1 },
+  { variant: "A", label: "80–89", min: 80, max: 89, total: 190, average: 84, delivered: 185, opened: 128, clicked: 25, linkedinEngaged: 42, positiveReply: 15, meeting: 8, opportunity: 5, closedWon: 3, closedLost: 2 },
+  { variant: "A", label: "60–79", min: 60, max: 79, total: 230, average: 69, delivered: 220, opened: 113, clicked: 18, linkedinEngaged: 33, positiveReply: 12, meeting: 6, opportunity: 4, closedWon: 2, closedLost: 2 },
+  { variant: "A", label: "Below 60", min: 0, max: 59, total: 180, average: 51, delivered: 169, opened: 70, clicked: 8, linkedinEngaged: 16, positiveReply: 5, meeting: 2, opportunity: 1, closedWon: 0, closedLost: 1 },
+  { variant: "B", label: "90–100", min: 90, max: 100, total: 100, average: 92, delivered: 96, opened: 64, clicked: 12, linkedinEngaged: 21, positiveReply: 5, meeting: 2, opportunity: 1, closedWon: 1, closedLost: 0 },
+  { variant: "B", label: "80–89", min: 80, max: 89, total: 170, average: 83, delivered: 163, opened: 96, clicked: 15, linkedinEngaged: 28, positiveReply: 7, meeting: 3, opportunity: 2, closedWon: 1, closedLost: 1 },
+  { variant: "B", label: "60–79", min: 60, max: 79, total: 210, average: 68, delivered: 199, opened: 95, clicked: 14, linkedinEngaged: 28, positiveReply: 9, meeting: 4, opportunity: 3, closedWon: 1, closedLost: 2 },
+  { variant: "B", label: "Below 60", min: 0, max: 59, total: 160, average: 50, delivered: 150, opened: 64, clicked: 7, linkedinEngaged: 17, positiveReply: 6, meeting: 3, opportunity: 2, closedWon: 1, closedLost: 1 },
+];
+
+function LaunchCohortValidation() {
   const [view, setView] = useState<CohortView>("all");
-  const [preset, setPreset] = useState<CohortPreset>("standard");
+  const [preset, setPreset] = useState<CohortPreset>("detailed");
   const bands =
     preset === "detailed"
       ? [
@@ -444,46 +458,38 @@ function LaunchCohortValidation({
           { label: "Below 60", min: 0, max: 59 },
         ];
 
-  const scored = prospects.map((prospect) => {
-    const snapshot = launchSnapshot(prospect.id);
-    return {
-      prospect,
-      score: snapshot?.score ?? prospectScore(prospect.id),
-      frozen: Boolean(snapshot),
-    };
-  });
-  const allFrozen = scored.every((item) => item.frozen);
   const variants: Array<VariantId | "all"> =
     view === "split" ? ["A", "B"] : view === "A" || view === "B" ? [view] : ["all"];
+  const sum = (items: DemoCohortSeed[], key: keyof DemoCohortSeed) =>
+    items.reduce((total, item) => total + Number(item[key]), 0);
   const rows = variants.flatMap((variant) =>
     bands.map((band) => {
-      const members = scored.filter(
+      const members = DEMO_COHORTS.filter(
         (item) =>
-          (variant === "all" || item.prospect.variant === variant) &&
-          item.score >= band.min &&
-          item.score <= band.max,
+          (variant === "all" || item.variant === variant) &&
+          item.min >= band.min &&
+          item.max <= band.max,
       );
-      const outcomes = members.map((item) => simulateProspectOutcome(item.prospect, item.score));
-      const total = members.length;
-      const count = (key: keyof ProspectOutcome) =>
-        outcomes.filter((outcome) => outcome[key]).length;
-      const delivered = count("delivered");
+      const total = sum(members, "total");
+      const weightedMean = total
+        ? Math.round(
+            members.reduce((score, item) => score + item.average * item.total, 0) / total,
+          )
+        : null;
       return {
         key: `${variant}-${band.label}`,
         label: `${band.label}${variant === "all" ? "" : ` · ${variant}`}`,
         total,
-        average: total
-          ? Math.round(members.reduce((sum, item) => sum + item.score, 0) / total)
-          : null,
-        delivered,
-        opened: count("opened"),
-        clicked: count("clicked"),
-        linkedinEngaged: count("linkedinEngaged"),
-        positiveReply: count("positiveReply"),
-        meeting: count("meeting"),
-        opportunity: count("opportunity"),
-        closedWon: count("closedWon"),
-        closedLost: count("closedLost"),
+        average: weightedMean,
+        delivered: sum(members, "delivered"),
+        opened: sum(members, "opened"),
+        clicked: sum(members, "clicked"),
+        linkedinEngaged: sum(members, "linkedinEngaged"),
+        positiveReply: sum(members, "positiveReply"),
+        meeting: sum(members, "meeting"),
+        opportunity: sum(members, "opportunity"),
+        closedWon: sum(members, "closedWon"),
+        closedLost: sum(members, "closedLost"),
       };
     }),
   );
@@ -496,12 +502,12 @@ function LaunchCohortValidation({
             <h2 className="text-base font-semibold text-primary">
               Prediction validation by cohort
             </h2>
-            <InfoPopover label="Prospects are grouped by their individual Prospect Prediction Score frozen at launch. This table tests whether higher-scored prospects actually produced better commercial outcomes. It does not alter the A/B split." />
+            <InfoPopover label="Prospects are grouped by their individual Prospect Prediction Score frozen at launch. The demo history deliberately includes strong, neutral and under-performing cohorts so each validation use case is visible." />
           </div>
           <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-            Score bands use the prospect prediction frozen before sending. Delivered uses launched
-            prospects as denominator; opens and clicks use delivered prospects; every downstream
-            commercial metric uses launched prospects.
+            Historical demo sample: every score band is populated so the pitch can show actual vs
+            expected behaviour. High absolute results can still be red when they underperform the
+            prediction; modest results can be green when they beat expectation.
           </p>
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
@@ -529,16 +535,6 @@ function LaunchCohortValidation({
         </div>
       </div>
 
-      {!allFrozen && (
-        <div className="mt-4 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-          <p>
-            This saved demo predates prospect snapshots. The table temporarily uses current scores;
-            reset and relaunch once to freeze a clean pre-send baseline.
-          </p>
-        </div>
-      )}
-
       <div className="mt-4 overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[1180px] border-collapse text-left text-xs">
           <thead className="bg-surface text-[10px] tracking-wide text-muted-foreground uppercase">
@@ -560,70 +556,18 @@ function LaunchCohortValidation({
           <tbody>
             {rows.map((row) => (
               <tr key={row.key} className="border-t border-border bg-card align-top">
-                <td className="whitespace-nowrap px-3 py-3 font-semibold">
-                  {row.label}
-                  {row.total > 0 && row.total < 5 && (
-                    <span className="mt-1 flex items-center gap-1 text-[10px] font-normal text-warning">
-                      <AlertTriangle className="h-3 w-3" /> Low sample
-                    </span>
-                  )}
-                </td>
+                <td className="whitespace-nowrap px-3 py-3 font-semibold">{row.label}</td>
                 <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
                 <td className="px-3 py-3 tabular-nums">{row.average ?? "—"}</td>
-                <RateCell
-                  count={row.delivered}
-                  denominator={row.total}
-                  metric="delivered"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.opened}
-                  denominator={row.delivered}
-                  metric="opened"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.clicked}
-                  denominator={row.delivered}
-                  metric="clicked"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.linkedinEngaged}
-                  denominator={row.total}
-                  metric="linkedinEngaged"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.positiveReply}
-                  denominator={row.total}
-                  metric="positiveReply"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.meeting}
-                  denominator={row.total}
-                  metric="meeting"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.opportunity}
-                  denominator={row.total}
-                  metric="opportunity"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.closedWon}
-                  denominator={row.total}
-                  metric="closedWon"
-                  meanScore={row.average}
-                />
-                <RateCell
-                  count={row.closedLost}
-                  denominator={row.total}
-                  metric="closedLost"
-                  meanScore={row.average}
-                />
+                <RateCell count={row.delivered} denominator={row.total} metric="delivered" meanScore={row.average} />
+                <RateCell count={row.opened} denominator={row.delivered} metric="opened" meanScore={row.average} />
+                <RateCell count={row.clicked} denominator={row.delivered} metric="clicked" meanScore={row.average} />
+                <RateCell count={row.linkedinEngaged} denominator={row.total} metric="linkedinEngaged" meanScore={row.average} />
+                <RateCell count={row.positiveReply} denominator={row.total} metric="positiveReply" meanScore={row.average} />
+                <RateCell count={row.meeting} denominator={row.total} metric="meeting" meanScore={row.average} />
+                <RateCell count={row.opportunity} denominator={row.total} metric="opportunity" meanScore={row.average} />
+                <RateCell count={row.closedWon} denominator={row.total} metric="closedWon" meanScore={row.average} />
+                <RateCell count={row.closedLost} denominator={row.total} metric="closedLost" meanScore={row.average} />
               </tr>
             ))}
           </tbody>
@@ -646,8 +590,8 @@ function LaunchCohortValidation({
         </span>
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-        Beta interpretation: this is predictive validation, not causal proof. Compare bands only
-        when their samples are large enough; otherwise use the trend as directional evidence.
+        Beta interpretation: this is predictive validation, not causal proof. The populated sample
+        is demo data designed to make each validation case visible during the product pitch.
       </p>
     </section>
   );
@@ -657,7 +601,6 @@ function CohortHead({ children }: { children: ReactNode }) {
   return <th className="whitespace-nowrap px-3 py-2.5 font-semibold">{children}</th>;
 }
 
-/** Metric keys used for expected-vs-actual colouring. */
 type CohortMetric =
   | "delivered"
   | "opened"
@@ -669,7 +612,6 @@ type CohortMetric =
   | "closedWon"
   | "closedLost";
 
-/** Expected rate (%) for a cohort, given its mean predicted score. Demo model. */
 const EXPECTED_AT_70: Record<CohortMetric, number> = {
   delivered: 96,
   opened: 54,
@@ -682,16 +624,38 @@ const EXPECTED_AT_70: Record<CohortMetric, number> = {
   closedLost: 1.5,
 };
 
+const SCORE_SLOPE: Record<CohortMetric, number> = {
+  delivered: 0.08,
+  opened: 0.55,
+  clicked: 0.18,
+  linkedinEngaged: 0.25,
+  positiveReply: 0.12,
+  meeting: 0.07,
+  opportunity: 0.05,
+  closedWon: 0.03,
+  closedLost: -0.025,
+};
+
+const EXPECTED_LIMITS: Record<CohortMetric, [number, number]> = {
+  delivered: [90, 99],
+  opened: [25, 80],
+  clicked: [2, 25],
+  linkedinEngaged: [4, 35],
+  positiveReply: [1, 12],
+  meeting: [0.4, 7],
+  opportunity: [0.2, 5],
+  closedWon: [0.1, 3],
+  closedLost: [0.4, 3],
+};
+
 function expectedRate(metric: CohortMetric, meanScore: number | null) {
   const base = EXPECTED_AT_70[metric];
   if (meanScore === null) return base;
-  const lift = 1 + (meanScore - 70) * 0.02;
-  const inverse = metric === "closedLost";
-  const factor = Math.max(0.35, inverse ? 2 - lift : lift);
-  return Math.max(0.2, base * factor);
+  const [min, max] = EXPECTED_LIMITS[metric];
+  const raw = base + (meanScore - 70) * SCORE_SLOPE[metric];
+  return Math.max(min, Math.min(max, raw));
 }
 
-/** Colour is relative to expectation, never to the absolute value. */
 function performanceClasses(actual: number, expected: number, inverse: boolean) {
   const ratio = expected > 0 ? actual / expected : 1;
   const adjusted = inverse ? (ratio > 0 ? 1 / ratio : 2) : ratio;
@@ -943,7 +907,7 @@ function Funnel({ prospectCount }: { prospectCount: number }) {
             <p className="mt-2 text-sm font-semibold tabular-nums">
               {item.value}{" "}
               <span className="font-normal text-muted-foreground">
-                {Math.round((item.value / prospectCount) * 100)}%
+                {prospectCount ? Math.round((item.value / prospectCount) * 100) : 0}%
               </span>
             </p>
           </div>
