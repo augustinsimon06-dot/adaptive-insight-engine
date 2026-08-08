@@ -72,7 +72,6 @@
   --shadow-pop: 0 12px 32px -12px oklch(0.2 0.03 265 / 0.25);
 }
 
-
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -162,4 +161,10 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+/* Performance overview: remove the obsolete Sequence A/B lemScore tracking cards.
+   The cohort score-band table below it stays visible. */
+main > section:has(> div.flex.flex-wrap.items-center.gap-2 > div > h2.text-primary) {
+  display: none;
 }

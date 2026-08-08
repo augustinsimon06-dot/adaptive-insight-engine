@@ -11,51 +11,57 @@ import { DemoBadge, InfoPopover } from "./shared";
 import { WorkflowCanvas } from "./workflow-canvas";
 
 export function LaunchScreen() {
-  const { steps, launched, launch, activeProspects, launchedProspects, launchSelection, update } =
-    useLemScore();
+  const { steps, launch, activeProspects, launchedProspects } = useLemScore();
   const [variant, setVariant] = useState<VariantId>("A");
   const [search, setSearch] = useState("");
-  const [queueTab, setQueueTab] = useState<"to_send" | "sent">(launched ? "sent" : "to_send");
+  const [queueTab, setQueueTab] = useState<"to_send" | "sent">("to_send");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (launched) setQueueTab("sent");
-  }, [launched]);
-
-  const toSendProspects = launched
-    ? activeProspects.filter(
-        (prospect) => !launchedProspects.some((launchedOne) => launchedOne.id === prospect.id),
-      )
-    : activeProspects;
+  const toSendProspects = activeProspects.filter(
+    (prospect) => !launchedProspects.some((launchedOne) => launchedOne.id === prospect.id),
+  );
   const queueProspects = queueTab === "sent" ? launchedProspects : toSendProspects;
   const visibleProspects = queueProspects.filter((prospect) =>
     `${prospect.name} ${prospect.company}`.toLowerCase().includes(search.toLowerCase()),
   );
-  const selectedIds = launchSelection.filter((id) =>
+  const validSelectedIds = selectedIds.filter((id) =>
     toSendProspects.some((prospect) => prospect.id === id),
   );
   const allSelected =
     toSendProspects.length > 0 &&
-    toSendProspects.every((prospect) => selectedIds.includes(prospect.id));
-  const someSelected = selectedIds.length > 0 && !allSelected;
-  const variantProspectCount = queueProspects.filter(
+    toSendProspects.every((prospect) => validSelectedIds.includes(prospect.id));
+  const someSelected = validSelectedIds.length > 0 && !allSelected;
+
+  const previewProspects =
+    queueTab === "sent"
+      ? launchedProspects
+      : validSelectedIds.length
+        ? toSendProspects.filter((prospect) => validSelectedIds.includes(prospect.id))
+        : toSendProspects;
+  const variantProspectCount = previewProspects.filter(
     (prospect) => prospect.variant === variant,
   ).length;
 
+  useEffect(() => {
+    if (!previewProspects.length) return;
+    if (!previewProspects.some((prospect) => prospect.variant === variant)) {
+      setVariant(previewProspects[0]!.variant);
+    }
+  }, [previewProspects, variant]);
+
   const toggleProspect = (id: string) => {
-    update({
-      launchSelection: launchSelection.includes(id)
-        ? launchSelection.filter((selectedId) => selectedId !== id)
-        : [...launchSelection, id],
-    });
+    const isSelected = validSelectedIds.includes(id);
+    setSelectedIds((previous) =>
+      isSelected ? previous.filter((selectedId) => selectedId !== id) : [...previous, id],
+    );
+    if (!isSelected) {
+      const prospect = toSendProspects.find((item) => item.id === id);
+      if (prospect) setVariant(prospect.variant);
+    }
   };
 
   const toggleAll = () => {
-    const queueIds = toSendProspects.map((prospect) => prospect.id);
-    update({
-      launchSelection: allSelected
-        ? launchSelection.filter((id) => !queueIds.includes(id))
-        : Array.from(new Set([...launchSelection, ...queueIds])),
-    });
+    setSelectedIds(allSelected ? [] : toSendProspects.map((prospect) => prospect.id));
   };
 
   return (
@@ -122,7 +128,7 @@ export function LaunchScreen() {
               )}
               <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 {queueTab === "to_send"
-                  ? `${selectedIds.length} selected · ${visibleProspects.length} ready`
+                  ? `${validSelectedIds.length} selected · ${visibleProspects.length} ready`
                   : `${visibleProspects.length} prospects sent`}
               </p>
             </div>
@@ -132,7 +138,7 @@ export function LaunchScreen() {
                   key={prospect.id}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors",
-                    queueTab === "to_send" && selectedIds.includes(prospect.id)
+                    queueTab === "to_send" && validSelectedIds.includes(prospect.id)
                       ? "border-primary bg-primary/5"
                       : "border-transparent hover:border-border hover:bg-muted/30",
                   )}
@@ -140,7 +146,7 @@ export function LaunchScreen() {
                   {queueTab === "to_send" && (
                     <Checkbox
                       aria-label={`Select ${prospect.name} for launch`}
-                      checked={selectedIds.includes(prospect.id)}
+                      checked={validSelectedIds.includes(prospect.id)}
                       onCheckedChange={() => toggleProspect(prospect.id)}
                     />
                   )}
@@ -191,8 +197,13 @@ export function LaunchScreen() {
               ))}
             </div>
             <span className="text-xs text-muted-foreground">
-              {variantProspectCount} prospects in this {queueTab === "sent" ? "sent" : "launch"}{" "}
-              queue · random 50/50 split preserved
+              {variantProspectCount} prospect{variantProspectCount === 1 ? "" : "s"} in this{" "}
+              {queueTab === "sent"
+                ? "sent"
+                : validSelectedIds.length
+                  ? "selected launch"
+                  : "to-send"}{" "}
+              view · random 50/50 split preserved
             </span>
             <InfoPopover label="Each prospect receives exactly one A/B variant. lemScore evaluates the fixed messages but never changes the split or sends anything automatically in this beta." />
           </div>
@@ -219,20 +230,22 @@ export function LaunchScreen() {
             </div>
             <Button
               className="ml-auto"
-              disabled={queueTab !== "to_send" || selectedIds.length === 0}
+              disabled={queueTab !== "to_send" || validSelectedIds.length === 0}
               onClick={() => {
-                const count = selectedIds.length;
-                launch(selectedIds);
+                const count = validSelectedIds.length;
+                launch(validSelectedIds, "launch");
+                setSelectedIds([]);
+                setQueueTab("to_send");
                 toast.success("Demo A/B launch completed", {
-                  description: `${count} selected prospect${count === 1 ? "" : "s"} were simulated. No real message was sent.`,
+                  description: `${count} selected prospect${count === 1 ? "" : "s"} were simulated. You can immediately select and launch more prospects.`,
                 });
               }}
             >
               <Rocket className="h-4 w-4" />
               {queueTab === "sent"
                 ? "Switch to To send to launch"
-                : selectedIds.length
-                  ? `Launch ${selectedIds.length} selected prospect${selectedIds.length === 1 ? "" : "s"} (demo)`
+                : validSelectedIds.length
+                  ? `Launch ${validSelectedIds.length} selected prospect${validSelectedIds.length === 1 ? "" : "s"}`
                   : "Select prospects to launch"}
             </Button>
           </div>
