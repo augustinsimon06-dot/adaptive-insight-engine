@@ -67,31 +67,31 @@ const OVERALL_OUTCOMES: OutcomePoint[] = [
 ];
 
 const STEP_PERFORMANCE: StepPerformance[] = [
-  { step: "Email #1", metric: "Open rate", reached: 164, historical: 58.4, current: 66.5 },
+  { step: "Email #1", metric: "Opened", reached: 164, historical: 58.4, current: 66.5 },
   {
     step: "LinkedIn connection request",
-    metric: "Acceptance rate",
+    metric: "Accepted",
     reached: 132,
     historical: 34.2,
     current: 37.9,
   },
   {
     step: "LinkedIn message",
-    metric: "Engagement rate",
+    metric: "Engaged",
     reached: 108,
     historical: 20.6,
     current: 25.0,
   },
   {
     step: "Follow-up email",
-    metric: "Open rate",
+    metric: "Opened",
     reached: 71,
     historical: 47.8,
     current: 53.5,
   },
   {
     step: "Final email",
-    metric: "Reply rate",
+    metric: "Replied",
     reached: 46,
     historical: 6.8,
     current: 4.3,
@@ -453,11 +453,11 @@ function StepPerformanceTable() {
       <div className="flex flex-wrap items-start gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold">Step performance vs benchmark</h2>
-            <InfoPopover label="Exposed share tells you how much of the launched audience actually reached the step. Performance is then calculated only among those exposed prospects, so later steps are not penalized when earlier steps already converted or stopped some prospects." />
+            <h2 className="text-base font-semibold">Step results vs benchmark</h2>
+            <InfoPopover label="Exposed share tells you how much of the launched audience actually reached the step. The current result is then calculated only among those exposed prospects, so later steps are not penalized when earlier steps already converted or stopped some prospects." />
           </div>
           <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-            Separate how many prospects reached each touch from how well that touch performed once reached.
+            See exactly what happened at each touch among the prospects who actually reached it.
           </p>
         </div>
         <DemoBadge className="ml-auto" />
@@ -468,10 +468,10 @@ function StepPerformanceTable() {
           <thead className="bg-surface text-[10px] tracking-wide text-muted-foreground uppercase">
             <tr>
               <CohortHead>Step</CohortHead>
-              <CohortHead>Metric</CohortHead>
+              <CohortHead>Result measured</CohortHead>
               <CohortHead>Prospects exposed</CohortHead>
               <CohortHead>Share of launched</CohortHead>
-              <CohortHead>Performance on exposed prospects</CohortHead>
+              <CohortHead>Current result among exposed</CohortHead>
               <CohortHead>Historical benchmark</CohortHead>
               <CohortHead>Difference</CohortHead>
             </tr>
@@ -480,15 +480,18 @@ function StepPerformanceTable() {
             {STEP_PERFORMANCE.map((row) => {
               const delta = row.current - row.historical;
               const exposedShare = (row.reached / LAUNCHED_PROSPECTS) * 100;
+              const resultLabel = row.metric.toLowerCase();
               return (
                 <tr key={row.step} className="border-t border-border bg-card">
                   <td className="px-3 py-3 font-semibold">{row.step}</td>
                   <td className="px-3 py-3 text-muted-foreground">{row.metric}</td>
                   <td className="px-3 py-3 font-semibold tabular-nums">{row.reached}</td>
                   <td className="px-3 py-3 tabular-nums">{exposedShare.toFixed(1)}%</td>
-                  <td className="px-3 py-3 font-semibold tabular-nums">{row.current.toFixed(1)}%</td>
+                  <td className="px-3 py-3 font-semibold tabular-nums">
+                    {row.current.toFixed(1)}% {resultLabel}
+                  </td>
                   <td className="px-3 py-3 tabular-nums text-muted-foreground">
-                    {row.historical.toFixed(1)}%
+                    {row.historical.toFixed(1)}% {resultLabel}
                   </td>
                   <td className="px-3 py-3">
                     <span
@@ -512,8 +515,8 @@ function StepPerformanceTable() {
 
       <div className="mt-3 rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
         <strong className="text-foreground">How to read it:</strong> LinkedIn message reached 108 of the 164 launched prospects
-        (65.9%). Its 25.0% performance is calculated only among those 108 exposed prospects, not among all 164.
-        Sample size is therefore dynamic: n = prospects exposed to each step, and confidence improves as that n grows.
+        (65.9%). Among those 108 exposed prospects, 25.0% engaged. The historical benchmark for the same result is 20.6% engaged.
+        Sample size is dynamic: n = prospects exposed to each step, and confidence improves as that n grows.
       </div>
     </section>
   );
