@@ -120,28 +120,37 @@ export function ScorePanel({
           <HoverCardTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-xl border border-warning/35 bg-warning-soft px-3 py-2.5 text-left text-xs transition-colors hover:border-warning/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="w-full rounded-xl border border-warning/35 bg-warning-soft px-3 py-2.5 text-left text-xs transition-colors hover:border-warning/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold text-foreground">Priority insight</span>
-                <span className="block truncate text-muted-foreground">
-                  {priority.label} · hover for the outcome-linked recommendation
-                </span>
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                <span className="font-semibold text-foreground">Priority insight</span>
+                <Sparkles className="ml-auto h-4 w-4 shrink-0 text-lem" aria-hidden="true" />
               </span>
-              <Sparkles className="h-4 w-4 shrink-0 text-lem" aria-hidden="true" />
+              <span className="mt-1.5 block leading-relaxed text-foreground">
+                Your ICP sits here: <strong>{TARGET_SEGMENT}</strong>. Companies that{" "}
+                <strong>{icpTrait}</strong> booked{" "}
+                <strong className="text-success">{winnerCallRate}% of calls</strong> with this
+                channel, versus <strong>{yourCallRate}%</strong> for messages written like yours.
+              </span>
+              <span className="mt-1 block text-muted-foreground">
+                Gap driver: {priority.label} · hover for the detail
+              </span>
             </button>
           </HoverCardTrigger>
           <HoverCardContent align="start" side="right" className="w-96 text-xs leading-relaxed">
-            <p className="font-semibold text-foreground">One evidence-backed improvement</p>
+            <p className="font-semibold text-foreground">
+              What the winning campaigns did differently
+            </p>
             <p className="mt-1 text-muted-foreground">
-              Your message is usable, but comparable messages sent in the same sequence context
-              produced better commercial outcomes when this element was closer to the winning
-              pattern:
+              On {formatCount(result.comparableMessages)} comparable demo messages sent to{" "}
+              {TARGET_SEGMENT}, the ones that {icpTrait} generated {winnerCallRate}% of calls.
+              Messages sharing your current pattern generated {yourCallRate}%.
             </p>
             <p className="mt-2 font-medium text-foreground">
               {priority.label}: {priority.benchmark}
             </p>
+            <p className="mt-1 text-muted-foreground">Your message today: {priority.observed}</p>
             <p className="mt-2 text-[11px] text-muted-foreground">
               Diagnostic only. Use lemlist AI if you want help rewriting the copy.
             </p>
@@ -157,7 +166,7 @@ export function ScorePanel({
           <Row label="Channel" value={channelLabel(step.channel)} />
           <Row label="Message position" value={`Content step ${step.position}`} />
           <Row label="Timing" value={step.timing} />
-          <Row label="Target segment" value="VP Sales · B2B SaaS · 201–500" />
+          <Row label="Target segment" value={TARGET_SEGMENT} />
         </dl>
       </section>
 
@@ -168,11 +177,46 @@ export function ScorePanel({
             <ChevronDown className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
           </summary>
           <div className="mt-3 rounded-lg bg-surface p-3 text-[11px] text-muted-foreground">
-            Compared with {result.comparableMessages.toLocaleString()} context-, channel- and
+            Compared with {formatCount(result.comparableMessages)} context-, channel- and
             target-segment-matched demo messages. {result.calibrationSource}. Confidence:{" "}
             {result.confidence}.
           </div>
-          <ul className="mt-3 space-y-2.5">
+
+          <div className="mt-3 rounded-lg border-2 border-lem/45 bg-lem/[0.05] p-3">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-lem uppercase">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Main driver ·
+              personalization learned from winning lemlist campaigns
+            </p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-foreground">
+              Personalization weighs the most in this score. It is not a generic “add a variable”
+              rule: we compare your message with lemlist campaigns that actually closed deals on{" "}
+              {TARGET_SEGMENT} and reuse their personalization patterns.
+            </p>
+            <ul className="mt-2 space-y-2">
+              {winningCampaigns.map((campaign) => (
+                <li key={campaign.name} className="rounded-md border border-border bg-background p-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold">{campaign.name}</span>
+                    <span className="ml-auto rounded-full bg-success-soft px-1.5 py-0.5 text-[10px] font-semibold text-success tabular-nums">
+                      {campaign.similarity}% similar
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {campaign.pattern} → {campaign.result}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Your message currently matches {personalizationMatch}% of these winning
+              personalization patterns.
+            </p>
+          </div>
+
+          <p className="mt-3 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Global metrics (intent, length, tone, proof, CTA)
+          </p>
+          <ul className="mt-2 space-y-2.5">
             {result.factors.map((factor) => (
               <FactorRow key={factor.label} factor={factor} />
             ))}
