@@ -94,18 +94,26 @@ export function ProspectListScreen() {
         <h2 className="text-base font-semibold">Prospect list</h2>
         <DemoBadge />
         <span className="text-xs text-muted-foreground">
-          Campaign members · check the prospects you want to launch. Only eligible checked rows are
-          added to the sequence.
+          Qualified campaign members · lemScore adds a second ranking based on fit with the exact sequence you built.
         </span>
-        <InfoPopover label="Launch applies only to checked prospects that have not already started and are not excluded or moved. Unchecked prospects stay in the campaign as Not started." />
+        <InfoPopover label="lemlist already handles sourcing and qualification. lemScore does not replace that first selection: it ranks the already-qualified prospects by compatibility with this exact campaign, then Launch applies only to checked eligible prospects." />
       </div>
 
       {!lemScoreActive && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
           <Sparkles className="h-4 w-4" />
           <span>
-            Activez lemScore dans Sequence pour afficher la prédiction individuelle de compatibilité
-            entre cette séquence et chaque prospect présélectionné.
+            Activate lemScore in Sequence to add campaign-specific fit on top of lemlist's existing prospect qualification.
+          </span>
+        </div>
+      )}
+
+      {lemScoreActive && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.035] px-4 py-3 text-xs">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <strong>Second-stage ranking:</strong>
+          <span className="text-muted-foreground">
+            Lead qualification asks “is this a good prospect?” · lemScore asks “is this exact campaign a good fit for this qualified prospect?”
           </span>
         </div>
       )}
@@ -165,7 +173,7 @@ export function ProspectListScreen() {
             className="ml-auto"
             onClick={() => update({ sortDir: sortDir === "desc" ? "asc" : "desc" })}
           >
-            Sort by lemScore {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : ""}
+            Sort by campaign fit {sortDir === "asc" ? "↑" : sortDir === "desc" ? "↓" : ""}
           </Button>
         )}
       </div>
@@ -190,7 +198,14 @@ export function ProspectListScreen() {
                 />
               </th>
               <th className="px-3 py-2.5 font-medium">Name</th>
-              {lemScoreActive && <th className="px-3 py-2.5 font-medium">lemScore</th>}
+              {lemScoreActive && (
+                <th className="px-3 py-2.5 font-medium">
+                  <span className="inline-flex items-center gap-1">
+                    Campaign fit
+                    <InfoPopover label="This is not lemlist Lead Score. It estimates how well the exact assigned sequence matches this already-qualified prospect's company, persona and intent context." />
+                  </span>
+                </th>
+              )}
               <th className="px-3 py-2.5 font-medium">Variant</th>
               <th className="px-3 py-2.5 font-medium">Company</th>
               <th className="px-3 py-2.5 font-medium">Job title</th>
@@ -221,7 +236,7 @@ export function ProspectListScreen() {
                       type="button"
                       onClick={() => setOpenId(p.id)}
                       className="rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                      aria-label={`Explain lemScore ${result.score} for ${p.name}`}
+                      aria-label={`Explain campaign fit ${result.score} for ${p.name}`}
                     >
                       <ScorePill score={result.score} validity={result.validity} suffix={false} />
                     </button>
@@ -338,6 +353,27 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
         ? "The sequence is credible, but one or two contextual elements limit the predicted fit."
         : "The current sequence has a weak fit with this prospect's context.";
 
+  const currentAngle =
+    p.variant === "A" ? "Ramp-time during active sales hiring" : "Broad onboarding suite / productivity";
+  const bestHistoricalFit =
+    p.context.signal.type === "sales_hiring"
+      ? "Ramp-time during active sales hiring"
+      : p.context.signal.type === "leadership_change"
+        ? "First-90-days priorities / manager productivity"
+        : p.context.signal.type === "funding"
+          ? "Scaling enablement without adding manager load"
+          : p.context.signal.type === "tech_adoption"
+            ? "Workflow adoption / manager efficiency"
+            : p.context.signal.type === "content_activity"
+              ? "Onboarding proof / ramp-time benchmark"
+              : "Manager productivity / enablement efficiency";
+  const angleMismatch = currentAngle !== bestHistoricalFit;
+  const recommendedAction = angleMismatch
+    ? `Do not discard ${p.name}: test or move this prospect to an angle closer to “${bestHistoricalFit}”.`
+    : result.score >= 80
+      ? `Keep ${p.name} in this campaign: the current angle matches the strongest comparable pattern.`
+      : `Keep the angle, but review the CTA, proof and touch order before launch.`;
+
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
@@ -359,32 +395,50 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
           </p>
 
           <div className="rounded-lg border border-primary/30 bg-primary/[0.035] p-3">
-            <h3 className="text-xs font-semibold text-primary">Recommended review</h3>
-            <p className="mt-1 leading-relaxed">
-              {priority
-                ? `${priority.label}: ${priority.benchmark}`
-                : "No major adjustment is suggested."}
+            <p className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+              What this score adds after lemlist qualification
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              No message is changed automatically.
+            <p className="mt-1.5 leading-relaxed text-foreground">
+              <strong>{p.name} is already a qualified campaign member.</strong> lemScore is not deciding whether this is a good lead in general. It is checking whether <strong>Sequence {p.variant}</strong> is the right strategy for this prospect's exact context.
             </p>
           </div>
 
-          <dl className="space-y-1.5">
-            <Line label="Assigned variant" value={`Sequence ${p.variant}`} />
-            <Line
-              label="Variant score at launch"
-              value={trend.snapshot ? trend.snapshot.score : "Not launched yet"}
-            />
-            <Line label="Persona" value={p.context.persona} />
-            <Line label="Industry" value={p.context.industry} />
-            <Line label="Company size" value={p.context.companySizeBand} />
-            <Line label="Geography" value={p.context.geography} />
-            <Line label="Intent signal" value={p.context.signal.label} />
-            <Line label="Growth" value={p.context.growth} />
-            <Line label="Technologies" value={p.context.technologies.join(", ") || "—"} />
-            <Line label="Public activity" value={p.context.publicActivity} />
-          </dl>
+          <div className="rounded-lg border-2 border-lem/40 bg-lem/[0.05] p-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-lem" />
+              <h3 className="text-xs font-semibold text-foreground">Campaign-fit decision</h3>
+            </div>
+            <dl className="mt-3 space-y-2">
+              <Line label="Current campaign angle" value={currentAngle} />
+              <Line label="Prospect signal" value={p.context.signal.label} />
+              <Line label="Historically strongest fit" value={bestHistoricalFit} />
+            </dl>
+            <p className="mt-3 leading-relaxed text-foreground">
+              <strong>Why:</strong> for comparable {p.context.persona} prospects in {p.context.industry} companies of {p.context.companySizeBand} employees, the model gives more weight to strategies aligned with <strong>{p.context.signal.label.toLowerCase()}</strong> and to the outcomes those strategies generated.
+            </p>
+            <div className="mt-3 rounded-md border border-success/30 bg-success-soft/40 p-2.5">
+              <p className="text-[10px] font-semibold tracking-wide text-success uppercase">Recommendation</p>
+              <p className="mt-1 font-medium text-foreground">{recommendedAction}</p>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Personalized copy can still be generated by lemlist AI. lemScore decides what strategic direction is most supported by comparable outcomes.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-3">
+            <h3 className="text-xs font-semibold">Inputs used for this prospect fit</h3>
+            <dl className="mt-2 space-y-1.5">
+              <Line label="Assigned variant" value={`Sequence ${p.variant}`} />
+              <Line label="Persona" value={p.context.persona} />
+              <Line label="Industry" value={p.context.industry} />
+              <Line label="Company size" value={p.context.companySizeBand} />
+              <Line label="Geography" value={p.context.geography} />
+              <Line label="Intent signal" value={p.context.signal.label} />
+              <Line label="Growth" value={p.context.growth} />
+              <Line label="Technologies" value={p.context.technologies.join(", ") || "—"} />
+              <Line label="Public activity" value={p.context.publicActivity} />
+            </dl>
+          </div>
 
           <div>
             <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -400,6 +454,10 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
           <details className="rounded-lg border border-border p-3">
             <summary className="cursor-pointer font-medium">Advanced prediction details</summary>
             <dl className="mt-3 space-y-1.5">
+              <Line
+                label="Variant score at launch"
+                value={trend.snapshot ? trend.snapshot.score : "Not launched yet"}
+              />
               <Line
                 label="Launched-version outcome"
                 value={
@@ -432,11 +490,20 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
             </dl>
           </details>
 
+          {priority && (
+            <div className="rounded-lg border border-warning/30 bg-warning-soft/40 p-3">
+              <h3 className="text-xs font-semibold">Largest score gap</h3>
+              <p className="mt-1 leading-relaxed">
+                <strong>{priority.label}:</strong> {priority.benchmark}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Observed: {priority.observed}</p>
+            </div>
+          )}
+
           <div className="space-y-2 rounded-lg border border-border p-3">
             <h3 className="text-xs font-semibold">Prospect management</h3>
             <p className="text-muted-foreground">
-              Nothing is removed or moved automatically. lemScore never generates a unique message
-              for a prospect.
+              Nothing is removed or moved automatically. Keep the prospect, exclude it from this campaign, or move it to a strategy that better matches the recommendation above.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -465,11 +532,11 @@ function ProspectDrawer({ id, onClose }: { id: string | null; onClose: () => voi
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  update({ moved: { ...moved, [p.id]: "Enablement Nurture Q3" } });
-                  toast.success(`${p.name} moved to “Enablement Nurture Q3”`);
+                  update({ moved: { ...moved, [p.id]: "Alternative angle · lemScore" } });
+                  toast.success(`${p.name} moved to an alternative-angle campaign`);
                 }}
               >
-                Move to another campaign
+                Move to suggested angle
               </Button>
             </div>
           </div>
@@ -484,7 +551,7 @@ function Line({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-3 border-b border-border pb-1 last:border-0">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn("text-right font-medium")}>{value}</dd>
+      <dd className={cn("max-w-[62%] text-right font-medium")}>{value}</dd>
     </div>
   );
 }
