@@ -1,7 +1,17 @@
+import { useMemo, useState } from "react";
 import { InfoPopover, DemoBadge } from "./shared";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Metric = "positiveReply" | "meeting" | "opportunity" | "closedWon" | "closedLost";
+type View = "all" | "A" | "B" | "split";
+type Preset = "standard" | "detailed";
 
 type DemoRow = {
   label: string;
@@ -14,47 +24,18 @@ type DemoRow = {
   closedLost: number;
 };
 
-const DEMO_ROWS: DemoRow[] = [
-  {
-    label: "90–100",
-    total: 42,
-    average: 94,
-    positiveReply: 8,
-    meeting: 4,
-    opportunity: 2,
-    closedWon: 1,
-    closedLost: 0,
-  },
-  {
-    label: "80–89",
-    total: 68,
-    average: 84,
-    positiveReply: 8,
-    meeting: 4,
-    opportunity: 2,
-    closedWon: 1,
-    closedLost: 1,
-  },
-  {
-    label: "60–79",
-    total: 74,
-    average: 71,
-    positiveReply: 5,
-    meeting: 2,
-    opportunity: 1,
-    closedWon: 0,
-    closedLost: 1,
-  },
-  {
-    label: "Below 60",
-    total: 56,
-    average: 52,
-    positiveReply: 1,
-    meeting: 0,
-    opportunity: 0,
-    closedWon: 0,
-    closedLost: 2,
-  },
+const A_ROWS: DemoRow[] = [
+  { label: "90–100", total: 24, average: 93, positiveReply: 4, meeting: 2, opportunity: 1, closedWon: 1, closedLost: 0 },
+  { label: "80–89", total: 31, average: 84, positiveReply: 3, meeting: 2, opportunity: 1, closedWon: 1, closedLost: 1 },
+  { label: "60–79", total: 28, average: 68, positiveReply: 2, meeting: 1, opportunity: 0, closedWon: 0, closedLost: 1 },
+  { label: "Below 60", total: 19, average: 54, positiveReply: 0, meeting: 0, opportunity: 0, closedWon: 0, closedLost: 1 },
+];
+
+const B_ROWS: DemoRow[] = [
+  { label: "90–100", total: 18, average: 95, positiveReply: 4, meeting: 2, opportunity: 1, closedWon: 1, closedLost: 0 },
+  { label: "80–89", total: 27, average: 85, positiveReply: 4, meeting: 2, opportunity: 1, closedWon: 1, closedLost: 1 },
+  { label: "60–79", total: 34, average: 69, positiveReply: 3, meeting: 1, opportunity: 1, closedWon: 0, closedLost: 2 },
+  { label: "Below 60", total: 22, average: 51, positiveReply: 1, meeting: 0, opportunity: 0, closedWon: 0, closedLost: 2 },
 ];
 
 const THRESHOLDS: Record<Metric, { good: number; medium: number; inverse?: boolean }> = {
@@ -65,7 +46,61 @@ const THRESHOLDS: Record<Metric, { good: number; medium: number; inverse?: boole
   closedLost: { good: 1.5, medium: 3, inverse: true },
 };
 
+function combineRows(a: DemoRow[], b: DemoRow[]): DemoRow[] {
+  return a.map((row, index) => {
+    const other = b[index]!;
+    const total = row.total + other.total;
+    return {
+      label: row.label,
+      total,
+      average: Math.round((row.average * row.total + other.average * other.total) / total),
+      positiveReply: row.positiveReply + other.positiveReply,
+      meeting: row.meeting + other.meeting,
+      opportunity: row.opportunity + other.opportunity,
+      closedWon: row.closedWon + other.closedWon,
+      closedLost: row.closedLost + other.closedLost,
+    };
+  });
+}
+
+function standardRows(rows: DemoRow[]): DemoRow[] {
+  const high = rows.slice(0, 2);
+  const total = high.reduce((sum, row) => sum + row.total, 0);
+  const merged: DemoRow = {
+    label: "80–100",
+    total,
+    average: Math.round(high.reduce((sum, row) => sum + row.average * row.total, 0) / total),
+    positiveReply: high.reduce((sum, row) => sum + row.positiveReply, 0),
+    meeting: high.reduce((sum, row) => sum + row.meeting, 0),
+    opportunity: high.reduce((sum, row) => sum + row.opportunity, 0),
+    closedWon: high.reduce((sum, row) => sum + row.closedWon, 0),
+    closedLost: high.reduce((sum, row) => sum + row.closedLost, 0),
+  };
+  return [merged, ...rows.slice(2)];
+}
+
+function withVariant(rows: DemoRow[], variant: "A" | "B") {
+  return rows.map((row) => ({ ...row, label: `${row.label} · ${variant}` }));
+}
+
 export function DemoCohortValidationTable() {
+  const [view, setView] = useState<View>("all");
+  const [preset, setPreset] = useState<Preset>("detailed");
+
+  const rows = useMemo(() => {
+    let selected: DemoRow[];
+    if (view === "A") selected = A_ROWS;
+    else if (view === "B") selected = B_ROWS;
+    else if (view === "split") selected = [...withVariant(A_ROWS, "A"), ...withVariant(B_ROWS, "B")];
+    else selected = combineRows(A_ROWS, B_ROWS);
+
+    if (preset === "standard" && view !== "split") return standardRows(selected);
+    if (preset === "standard" && view === "split") {
+      return [...withVariant(standardRows(A_ROWS), "A"), ...withVariant(standardRows(B_ROWS), "B")];
+    }
+    return selected;
+  }, [view, preset]);
+
   return (
     <div className="grid bg-surface lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="hidden border-r border-border bg-background lg:block" aria-hidden="true" />
@@ -75,19 +110,33 @@ export function DemoCohortValidationTable() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-primary">Prediction validation by cohort</h2>
-                <InfoPopover label="Illustrative 14-day demo outcomes. Scores are assumed to have been frozen before launch, then compared with downstream outcomes to show how lemScore would be validated and recalibrated on real campaign data." />
+                <InfoPopover label="Illustrative demo outcomes. The layout and cohort logic stay the same; these values simply make the beta demo readable before real campaign data exists." />
               </div>
               <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-                Illustrative 14-day outcome simulation: do higher pre-send score bands actually produce stronger positive replies, meetings and downstream outcomes?
+                Check whether higher pre-send score bands actually produced stronger replies, meetings and downstream outcomes.
               </p>
             </div>
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <div className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium">
-                A + B combined
-              </div>
-              <div className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium">
-                4 score bands
-              </div>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Select value={view} onValueChange={(value) => setView(value as View)}>
+                <SelectTrigger className="w-40 bg-background" aria-label="A/B cohort view">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">A + B combined</SelectItem>
+                  <SelectItem value="split">Split A/B</SelectItem>
+                  <SelectItem value="A">Sequence A only</SelectItem>
+                  <SelectItem value="B">Sequence B only</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={preset} onValueChange={(value) => setPreset(value as Preset)}>
+                <SelectTrigger className="w-40 bg-background" aria-label="Score bands">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">3 score bands</SelectItem>
+                  <SelectItem value="detailed">4 score bands</SelectItem>
+                </SelectContent>
+              </Select>
               <DemoBadge />
             </div>
           </div>
@@ -107,7 +156,7 @@ export function DemoCohortValidationTable() {
                 </tr>
               </thead>
               <tbody>
-                {DEMO_ROWS.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.label} className="border-t border-border bg-card align-top">
                     <td className="whitespace-nowrap px-3 py-3 font-semibold">{row.label}</td>
                     <td className="px-3 py-3 font-semibold tabular-nums">{row.total}</td>
@@ -124,10 +173,15 @@ export function DemoCohortValidationTable() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="font-semibold text-foreground">Illustrative cohort sizes and outcomes — not real lemlist customer results.</span>
-            <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">Higher score → stronger outcomes</span>
-            <span>Scores are frozen at launch so later edits cannot rewrite the prediction being validated.</span>
+            <span className="font-semibold text-foreground">Base = illustrative launched prospects in each score cohort (n)</span>
+            <span className="rounded-md bg-success-soft px-2 py-0.5 font-semibold text-success">Strong</span>
+            <span className="rounded-md bg-warning-soft px-2 py-0.5 font-semibold text-warning">Medium</span>
+            <span className="rounded-md bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">Weak</span>
+            <span>Won: higher is better · Lost: lower is better.</span>
           </div>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Beta simulation only. Scores are frozen at launch so later edits cannot rewrite the prediction that is being validated.
+          </p>
         </section>
       </div>
     </div>
