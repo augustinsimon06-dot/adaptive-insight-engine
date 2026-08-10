@@ -7,7 +7,7 @@ import { SequenceScreen } from "@/components/lemscore/sequence-screen";
 import { ProspectListScreen } from "@/components/lemscore/prospect-list-screen";
 import { LaunchScreen } from "@/components/lemscore/launch-screen";
 import { PerformanceScreen } from "@/components/lemscore/performance-screen";
-import { CohortValidationTable } from "@/components/lemscore/cohort-validation-table";
+import { DemoCohortValidationTable } from "@/components/lemscore/demo-cohort-validation";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,7 +56,7 @@ function Screens() {
   return (
     <>
       <PerformanceScreen />
-      {lemScoreEnabled && lemScoreEntitled && <CohortValidationTable />}
+      {lemScoreEnabled && lemScoreEntitled && <DemoCohortValidationTable />}
     </>
   );
 }
