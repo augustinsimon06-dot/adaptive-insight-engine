@@ -1,6 +1,5 @@
 import { AlertTriangle, ChevronDown, Loader2, PanelRightClose, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { channelLabel } from "@/lib/lemscore/benchmarks";
 import { bandLabel } from "@/lib/lemscore/scoring";
 import { useLemScore } from "@/lib/lemscore/store";
@@ -74,6 +73,25 @@ export function ScorePanel({
     similarity: 92 - index * 7 - (seed % 4),
   }));
 
+  const decision =
+    step.variant === "B"
+      ? {
+          action: "Switch angle",
+          current: "Broad onboarding suite / productivity",
+          recommended: "Ramp-time during active sales hiring",
+          reason:
+            "For VP Sales in growing B2B SaaS accounts, comparable campaigns tied to an active hiring wave outperformed broad product-suite pitches on positive replies and meetings.",
+          expectedScore: Math.min(94, result.score + 17),
+        }
+      : {
+          action: "Keep angle · change CTA",
+          current: "Ramp-time during active sales hiring",
+          recommended: "Keep the ramp-time angle; replace the 15-minute ask with a low-friction question",
+          reason:
+            "The angle already matches a strong historical pattern for this audience. The largest remaining gap is the CTA: comparable first touches performed better with a soft question before asking for a meeting.",
+          expectedScore: Math.min(96, result.score + 6),
+        };
+
   return (
     <aside
       className="m-3 flex h-[calc(100%-1.5rem)] flex-col gap-4 overflow-y-auto rounded-2xl border-2 border-primary/70 bg-background p-4 shadow-[0_12px_32px_-22px_rgba(37,99,235,0.75)]"
@@ -82,7 +100,7 @@ export function ScorePanel({
       <div className="flex items-start gap-2">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-primary uppercase">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Message optimization
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Outcome-based decision layer
           </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Sequence {step.variant} · {channelLabel(step.channel)}
@@ -90,7 +108,7 @@ export function ScorePanel({
         </div>
         <InfoPopover
           className="w-96"
-          label="This is not lemlist's generic writing or deliverability score. It evaluates the exact message against the ICP already stored in lemlist, its channel, order and timing, then compares that context with commercially similar historical campaigns and outcomes. Individual sequence-to-prospect fit is calculated separately in Prospect list."
+          label="lemScore does not replace lemlist AI generation. lemlist AI can write or personalize the copy; lemScore estimates which angle, CTA, proof, channel, order and timing are most consistent with historically successful outcomes for this client context and audience. Individual sequence-to-prospect fit is calculated separately in Prospect list."
         />
         {onCollapse && (
           <Button
@@ -112,12 +130,12 @@ export function ScorePanel({
         )}
       >
         <p className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-          Live message score
+          Live sequence score
         </p>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-semibold tabular-nums">{result.score}</span>
           <span className="text-sm text-muted-foreground">/100</span>
-          <InfoPopover label={`This 0–100 number is an optimization index, not a reply probability. It measures how closely this exact message matches outcome-winning patterns for the ICP stored in lemlist: ${targetSegment}. Changing the selected prospects does not change this message-level score.`} />
+          <InfoPopover label={`This 0–100 number is an optimization index, not a reply probability. It measures how closely this exact strategy matches outcome-winning patterns for the client context and ICP stored in lemlist: ${targetSegment}. Changing the selected prospects does not change this sequence-level score.`} />
           {analyzing && (
             <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Updating…
@@ -140,7 +158,7 @@ export function ScorePanel({
               {bandLabel(result.score)}
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              Exact copy × ICP context × channel × order × timing × comparable historical outcomes.
+              Client context × exact angle/copy/CTA × ICP/persona × channel/order/timing × comparable historical outcomes.
             </p>
           </>
         )}
@@ -156,60 +174,81 @@ export function ScorePanel({
         </dl>
       </section>
 
+      {!unavailable && (
+        <section className="rounded-xl border-2 border-lem/45 bg-lem/[0.05] p-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-lem" aria-hidden="true" />
+            <div>
+              <p className="text-[10px] font-semibold tracking-wide text-lem uppercase">
+                Highest-impact decision
+              </p>
+              <p className="text-xs font-semibold text-foreground">{decision.action}</p>
+            </div>
+            <span className="ml-auto rounded-full border border-lem/25 bg-background px-2 py-1 text-[10px] font-semibold text-lem">
+              Demo recommendation
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-2 text-xs">
+            <div className="rounded-lg border border-border bg-background p-2.5">
+              <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                Current strategy
+              </p>
+              <p className="mt-1 font-medium">{decision.current}</p>
+            </div>
+            <div className="rounded-lg border border-success/30 bg-success-soft/40 p-2.5">
+              <p className="text-[10px] font-semibold tracking-wide text-success uppercase">
+                Historically stronger fit
+              </p>
+              <p className="mt-1 font-semibold text-foreground">{decision.recommended}</p>
+            </div>
+          </div>
+
+          <p className="mt-3 text-[11px] leading-relaxed text-foreground">
+            <strong>Why:</strong> {decision.reason}
+          </p>
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-background px-3 py-2 text-xs">
+            <span className="text-muted-foreground">Estimated score after change</span>
+            <span className="font-semibold tabular-nums">
+              {result.score} → <span className="text-success">{decision.expectedScore}</span>
+            </span>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            lemScore recommends <strong>what to change and why</strong>. lemlist AI can then generate or rewrite the copy; lemScore remains the decision and validation layer.
+          </p>
+        </section>
+      )}
+
       {priority && !unavailable && (
-        <HoverCard openDelay={120} closeDelay={100}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              className="w-full rounded-xl border border-warning/35 bg-warning-soft px-3 py-2.5 text-left text-xs transition-colors hover:border-warning/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <span className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                <span className="font-semibold text-foreground">Priority insight</span>
-                <Sparkles className="ml-auto h-4 w-4 shrink-0 text-lem" aria-hidden="true" />
-              </span>
-              <span className="mt-1.5 block leading-relaxed text-foreground">
-                lemlist context: <strong>{targetSegment}</strong>. Comparable prospects that{" "}
-                <strong>{icpTrait}</strong> generated{" "}
-                <strong className="text-success">{winnerCallRate}% positive engagement</strong> with
-                this type of touch, versus <strong>{yourCallRate}%</strong> for messages written like
-                yours.
-              </span>
-              <span className="mt-1 block text-muted-foreground">
-                Gap driver: {priority.label} · hover for the detail
-              </span>
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent align="start" side="right" className="w-96 text-xs leading-relaxed">
-            <p className="font-semibold text-foreground">
-              What comparable campaigns did differently
-            </p>
-            <p className="mt-1 text-muted-foreground">
-              On {formatCount(result.comparableMessages)} comparable demo messages sent to{" "}
-              {targetSegment}, campaigns matching this context produced stronger positive replies and
-              meetings than messages sharing your current pattern.
-            </p>
-            <p className="mt-2 font-medium text-foreground">
-              {priority.label}: {priority.benchmark}
-            </p>
-            <p className="mt-1 text-muted-foreground">Your message today: {priority.observed}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Diagnostic only. Use lemlist AI if you want help rewriting the copy.
-            </p>
-          </HoverCardContent>
-        </HoverCard>
+        <section className="rounded-xl border border-warning/35 bg-warning-soft px-3 py-2.5 text-xs">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+            <span className="font-semibold text-foreground">Evidence behind the recommendation</span>
+          </span>
+          <p className="mt-1.5 leading-relaxed text-foreground">
+            lemlist context: <strong>{targetSegment}</strong>. Comparable prospects that{" "}
+            <strong>{icpTrait}</strong> generated{" "}
+            <strong className="text-success">{winnerCallRate}% positive engagement</strong> with
+            the stronger pattern, versus <strong>{yourCallRate}%</strong> for messages sharing your current pattern.
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            Main gap driver: {priority.label} · {priority.benchmark}
+          </p>
+        </section>
       )}
 
       <section className="rounded-xl border border-border bg-card p-4">
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Sequence context
+          Inputs used for this score
         </h3>
         <dl className="mt-2 space-y-1.5 text-xs">
+          <Row label="Client / ICP context" value={targetSegment} />
+          <Row label="Geography" value={icp.context.geography} />
           <Row label="Channel" value={channelLabel(step.channel)} />
           <Row label="Message position" value={`Content step ${step.position}`} />
           <Row label="Timing" value={step.timing} />
-          <Row label="ICP from AI Context Center" value={targetSegment} />
-          <Row label="Geography" value={icp.context.geography} />
+          <Row label="Strategy features" value="Angle · CTA · proof · length · tone" />
+          <Row label="Outcome targets" value="Positive replies · meetings" />
         </dl>
       </section>
 
@@ -227,13 +266,10 @@ export function ScorePanel({
 
           <div className="mt-3 rounded-lg border-2 border-lem/45 bg-lem/[0.05] p-3">
             <p className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-lem uppercase">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Main driver · patterns learned
-              from comparable lemlist campaigns
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Patterns learned from comparable lemlist campaigns
             </p>
             <p className="mt-1.5 text-[11px] leading-relaxed text-foreground">
-              This is not a generic “add a variable” rule. The demo compares your message with
-              campaigns sent to similar prospects and uses downstream signals such as clicks,
-              positive replies and meetings to estimate fit.
+              The demo compares strategy features and prospect context with historically similar campaigns and uses downstream outcomes such as positive replies and meetings to estimate fit. It is not a generic “add a variable” rule.
             </p>
             <ul className="mt-2 space-y-2">
               {winningCampaigns.map((campaign) => (
@@ -251,13 +287,12 @@ export function ScorePanel({
               ))}
             </ul>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Your message currently matches {personalizationMatch}% of these historically effective
-              patterns.
+              Your message currently matches {personalizationMatch}% of these historically effective patterns.
             </p>
           </div>
 
           <p className="mt-3 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-            Global metrics (intent, length, tone, proof, CTA)
+            Model factors in this demo
           </p>
           <ul className="mt-2 space-y-2.5">
             {result.factors.map((factor) => (
@@ -269,9 +304,7 @@ export function ScorePanel({
 
       <p className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-[11px] leading-relaxed text-muted-foreground">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-        Message scoring reuses the ICP already stored in lemlist and stays independent from the
-        selected prospect list. Prospect list then adds each real prospect's context to score the
-        full assigned sequence. Launch freezes both predictions so later outcomes can validate them.
+        Sequence score evaluates the strategy against the client context and target audience. Prospect list then adds each real prospect's company, persona and intent signals to answer a second question: is this exact sequence a strong fit for this specific qualified prospect?
       </p>
       <DemoBadge className="w-fit" />
     </aside>
